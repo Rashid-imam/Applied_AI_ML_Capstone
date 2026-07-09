@@ -1,357 +1,878 @@
-# House Price Prediction using Machine Learning and LLM
+# Applied AI & ML Capstone Project
+## End-to-End Data Intelligence System
 
 ## Project Overview
 
-This project was developed as part of the Applied AI / Machine Learning Capstone Assignment.
+This project was completed as part of the Applied AI & Machine Learning Capstone Project.
 
-The objective of this project is to build a complete machine learning pipeline starting from raw data preprocessing to advanced model development and finally integrating a Large Language Model (LLM) powered feature.
+The objective of this project is to develop a complete end-to-end machine learning workflow starting from raw data preprocessing to advanced predictive modelling and finally integrating a Large Language Model (LLM) powered intelligent feature.
 
-The project is divided into four parts:
+The project is divided into four independent but connected parts.
 
-- Part 1 – Data Cleaning and Exploratory Data Analysis (EDA)
+- Part 1 – Data Acquisition, Cleaning and Exploratory Data Analysis
 - Part 2 – Supervised Machine Learning
-- Part 3 – Advanced Machine Learning Models
-- Part 4 – LLM Powered Feature (Track C – Model Prediction Explanation Pipeline)
+- Part 3 – Advanced Ensemble Models, Hyperparameter Tuning and ML Pipeline
+- Part 4 – LLM Powered Intelligent Feature
 
----
+Each part builds upon the previous one and demonstrates practical data science techniques used in real-world analytics projects.
 
 # Dataset
 
-**Dataset Name**
+## Dataset Name
 
 House Prices – Advanced Regression Techniques
 
-**Source**
+## Source
 
 Kaggle
 
-The dataset contains residential house information with numerical and categorical features. The target variable is **SalePrice**, which represents the selling price of each house.
+## Dataset Description
 
----
+The dataset contains detailed information about residential houses along with multiple numerical and categorical attributes describing their physical characteristics, construction quality, location, size, utilities, and selling price.
 
-# Repository Structure
+The target variable used for regression is:
 
-```
-Applied_AI_ML_Capstone/
-│
+SalePrice
+
+which represents the final selling price of each property.
+
+The dataset satisfies all assignment requirements:
+
+- More than 500 rows
+- More than 5 numerical features
+- More than 2 categorical features
+- Suitable for both regression and binary classification
+
+For the classification task, a binary target was created by comparing SalePrice with its median value.
+
+PriceCategory = (SalePrice > SalePrice.median()).astype(int)
+
+This creates two balanced classes representing lower-priced and higher-priced houses.
+
+## Dataset Justification
+
+This dataset was selected because it provides a realistic real-estate prediction problem involving both numerical and categorical variables.
+
+It contains missing values, skewed numerical distributions, categorical attributes, and outliers, making it suitable for demonstrating data cleaning, exploratory data analysis, feature engineering, regression, classification, ensemble learning, hyperparameter tuning, and LLM integration.
+
+The dataset is widely used in machine learning research and therefore provides an excellent benchmark for evaluating different predictive models.
+
+## Repository Structure
+
 ├── data/
 │   ├── train.csv
-│   └── cleaned_data.csv
+│   ├── cleaned_data.csv
 │
 ├── notebooks/
-│   ├── Part1_Data_Cleaning_EDA.ipynb
-│   ├── Part2_Supervised_ML.ipynb
-│   ├── Part3_Advanced_ML.ipynb
-│   └── Part4_LLM_Powered_Feature.ipynb
+│   ├── Part1_EDA.ipynb
+│   ├── Part2_ML.ipynb
+│   ├── Part3_AdvancedModels.ipynb
+│   ├── Part4_LLM.ipynb
 │
 ├── models/
 │   └── best_model.pkl
 │
-├── images/
+├── README.md
 │
-└── README.md
-```
+└── requirements.txt
 
----
 
-# Technologies Used
-
-- Python
-- Pandas
-- NumPy
-- Matplotlib
-- Seaborn
-- Scikit-learn
-- Joblib
-- Requests
-- JSON
-- JSONSchema
-- OpenRouter API
-- GPT-OSS-20B (Free)
-
----
-
-# Part 1 – Data Cleaning and Exploratory Data Analysis (EDA)
+# Part 1 – Data Acquisition, Cleaning and Exploratory Data Analysis
 
 ## Objective
 
-The objective of Part 1 was to understand the dataset, identify data quality issues, perform preprocessing, handle missing values, detect duplicates and outliers, analyze feature distributions, and generate visualizations before building machine learning models.
+The objective of Part 1 is to convert the raw dataset into a clean and analysis-ready dataset before applying any machine learning models.
 
----
+The workflow includes:
 
-## Steps Performed
+- Loading the raw dataset
+- Handling missing values
+- Detecting duplicate records
+- Correcting data types
+- Memory optimization
+- Statistical analysis
+- Outlier detection
+- Exploratory Data Analysis (EDA)
+- Correlation analysis
+- Feature relationship analysis
+- Saving the cleaned dataset for subsequent parts of the project
+
+The final cleaned dataset generated in this phase is stored as:
+
+cleaned_data.csv
+
+This file is used directly in Part 2 and Part 3.
+
+
+## 1. Data Loading
+
+The dataset was loaded into a Pandas DataFrame using:
+
+```python
+pd.read_csv()
+```
+
+After loading the dataset, the following inspections were performed:
+
+- Displayed the first five rows using head()
+- Printed dataset dimensions using shape
+- Displayed column data types using dtypes
+
+These initial checks helped verify that the dataset was imported successfully and allowed identification of columns requiring further preprocessing.
+
+
+## 2. Missing Value Analysis
+
+Missing values were identified using:
+
+```python
+df.isnull().sum()
+```
+
+The percentage of missing values for every column was calculated as:
+
+```python
+(df.isnull().sum()/len(df))*100
+```
+
+Columns containing more than 20% missing values were identified separately for further consideration.
+
+For numerical columns containing less than 20% missing values, missing entries were imputed using the column median.
+
+### Why Median Instead of Mean?
+
+The dataset contains several highly skewed numerical variables.
+
+The mean is strongly influenced by extreme observations (outliers), whereas the median remains much more stable even when unusually high or low values exist.
+
+Since housing datasets typically contain expensive luxury properties that create right-skewed distributions, median imputation provides a more representative estimate of the central tendency than the mean.
+
+This approach reduces bias introduced by outliers while preserving the overall distribution of the data.
+
+
+## 3. Duplicate Detection and Removal
+
+Duplicate observations were identified using:
+
+```python
+df.duplicated().sum()
+```
+
+Detected duplicate rows were removed using:
+
+```python
+df.drop_duplicates()
+```
+
+After duplicate removal:
+
+- Total duplicate rows removed were reported.
+- Dataset shape was verified again.
+- Missing value percentages were recalculated to confirm whether duplicate removal affected null-value statistics.
+
+Removing duplicate records prevents the model from learning repeated information and helps improve generalization performance.
+
+
+## 4. Data Type Correction
+
+Several columns required data type optimization.
 
 The following preprocessing steps were performed:
 
-- Loaded the dataset using Pandas.
-- Displayed the first few records.
-- Checked dataset dimensions.
-- Inspected data types of all features.
-- Identified missing values.
-- Calculated missing value percentages.
-- Filled missing numerical values using the median.
-- Filled missing categorical values using the mode where appropriate.
-- Checked duplicate records.
-- Converted suitable columns to categorical data types.
-- Generated descriptive statistics.
-- Calculated skewness for numerical features.
-- Compared mean and median for highly skewed columns.
-- Detected outliers using the Interquartile Range (IQR) method.
-- Created multiple visualizations for data exploration.
-- Generated Pearson correlation matrix.
-- Generated Spearman correlation matrix.
-- Performed grouped aggregation analysis.
-- Saved the cleaned dataset as `cleaned_data.csv`.
+### Numeric Conversion
+
+Columns stored as object but representing numeric values were converted using:
+
+```python
+pd.to_numeric(errors="coerce")
+```
+
+This safely converted invalid values into missing values for later processing.
+
+### Category Conversion
+
+Highly repetitive string columns were converted into the category datatype.
+
+Example categorical columns include:
+
+- Neighborhood
+- MSZoning
+- SaleCondition
+
+Converting these columns significantly reduces memory usage because repeated text values are internally stored only once.
+
+Memory usage before and after optimization was measured using:
+
+```python
+df.memory_usage(deep=True).sum()
+```
+
+The optimized dataset required substantially less memory while preserving identical information.
+
+
+## 5. Descriptive Statistics
+
+Descriptive statistics were generated for all numerical variables using:
+
+```python
+df.describe()
+```
+
+The following statistics were reviewed:
+
+- Count
+- Mean
+- Standard Deviation
+- Minimum
+- 25th Percentile
+- Median
+- 75th Percentile
+- Maximum
+
+These statistics provide an overview of each variable's distribution and highlight unusually large ranges or potential outliers.
+
+
+## 6. Skewness Analysis
+
+The skewness of every numerical feature was calculated using:
+
+```python
+df[col].skew()
+```
+
+The feature with the highest absolute skewness was identified for detailed analysis.
+
+### Interpretation
+
+Positive skewness indicates that the distribution contains a long right tail. Most observations are concentrated at lower values, while a few extremely large observations pull the distribution toward the right.
+
+Negative skewness indicates that the distribution contains a long left tail. Most observations lie toward higher values while a few extremely small observations pull the distribution toward the left.
+
+Because highly skewed variables are influenced by extreme observations, the median provides a more reliable estimate of central tendency than the mean. Therefore, median imputation was preferred for skewed numerical features.
+
+The histogram produced later confirms the distribution pattern of the most skewed feature.
+
+
+## 7. Outlier Detection using Interquartile Range (IQR)
+
+Outliers were identified using the Interquartile Range (IQR) method.
+
+For each selected numerical feature:
+
+- Q1 (25th percentile)
+- Q3 (75th percentile)
+- IQR = Q3 − Q1
+- Lower Bound = Q1 − 1.5 × IQR
+- Upper Bound = Q3 + 1.5 × IQR
+
+Rows falling outside these bounds were counted as potential outliers.
+
+### Interpretation
+
+Outliers were intentionally **not removed** because house-price datasets naturally contain premium and luxury properties whose values are genuinely high rather than erroneous.
+
+Removing these observations could reduce the model's ability to learn the complete price distribution.
+
+Instead, these outliers were documented and retained for Part 2, where machine learning models such as Ridge Regression and ensemble methods are expected to handle them more robustly.
+
+
+## 8. Exploratory Data Analysis (EDA)
+
+Several visualization techniques were used to better understand the dataset.
+
+### Line Plot
+
+A line plot was generated for a numerical variable to observe changes across the dataset.
+
+The visualization helped identify overall trends, fluctuations, and unusual observations.
 
 ---
 
-## Missing Value Handling
+### Bar Chart
 
-Missing values were handled according to feature type.
+A bar chart was created to compare the average value of a numerical feature across categories.
 
-- Numerical columns were filled using the **median**.
-- Categorical columns were filled using the **mode** whenever necessary.
-
-Using different strategies for numerical and categorical variables helps preserve the statistical characteristics of the dataset.
+This visualization highlighted how different categories contribute differently to the selected numerical variable.
 
 ---
 
-## Why Median was Preferred over Mean
+### Histogram
 
-Many numerical features in the housing dataset are positively skewed and contain outliers.
+A histogram of the most skewed numerical feature was plotted using 20 bins.
 
-The **mean** is sensitive to extreme values, whereas the **median** remains stable even when outliers are present.
+The histogram confirmed the skewed distribution identified through skewness statistics.
 
-Therefore, median imputation provides a more reliable estimate of central tendency for skewed numerical features.
-
----
-
-## Skewness Analysis
-
-Skewness was calculated for numerical features to understand their distributions.
-
-- Positive skewness indicates a long right tail.
-- Negative skewness indicates a long left tail.
-- Features with high skewness were carefully analyzed before preprocessing.
-
-Comparing the mean and median also helped identify skewed variables.
+The long tail indicates the presence of relatively few extreme observations compared to the majority of samples.
 
 ---
 
-## Outlier Detection
+### Scatter Plot
 
-Outliers were detected using the **Interquartile Range (IQR)** method.
+A scatter plot was generated between two numerical variables expected to have a relationship.
 
-Instead of removing all outliers, they were retained because many extreme observations represent genuine high-value houses rather than incorrect records.
+The plot demonstrated the direction and approximate strength of correlation.
 
-Removing such observations could reduce the model's ability to learn important market patterns.
-
----
-
-## Exploratory Data Analysis
-
-Several visualizations were created to better understand the dataset.
-
-The following plots were generated:
-
-- Histogram
-- Scatter Plot
-- Box Plot
-- Bar Chart
-- Line Plot
-- Correlation Heatmap
-
-These visualizations helped identify feature distributions, relationships between variables, and potential outliers.
+A positive trend indicates that as one variable increases, the other generally increases as well.
 
 ---
 
-## Correlation Analysis
+### Box Plot
 
-Two correlation methods were used.
+A box plot compared a numerical feature across categorical groups.
 
-### Pearson Correlation
+The plot revealed:
 
-Pearson correlation measures the strength of **linear relationships** between numerical variables.
+- Differences in median values
+- Differences in spread (IQR)
+- Presence of outliers
+- Variation among different categories
 
-### Spearman Correlation
+This visualization helps understand whether categorical variables have predictive power.
 
-Spearman correlation measures **rank-based monotonic relationships** and is more robust to non-linear relationships and outliers.
 
-Using both methods provided a better understanding of feature relationships with the target variable.
+## 9. Pearson Correlation Analysis
 
----
+Pearson correlation coefficients were calculated for all numerical variables using:
 
-## Grouped Aggregation
+```python
+df.corr()
+```
 
-Grouped aggregation was performed using summary statistics such as:
+The resulting correlation matrix was visualized using a heatmap.
+
+### Interpretation
+
+The heatmap highlights both strong positive and strong negative linear relationships between variables.
+
+The pair with the highest absolute correlation was identified for further analysis.
+
+Although a strong correlation suggests an association, it does **not** necessarily imply causation.
+
+A third variable may simultaneously influence both correlated variables.
+
+For example, larger houses often have more rooms and higher sale prices.
+
+Therefore, the observed correlation may actually arise because house size influences both variables rather than one directly causing the other.
+
+
+## 10. Mean vs Median Imputation Comparison
+
+For the two numerical variables with the highest absolute skewness, both the mean and median were calculated before imputation.
+
+The comparison demonstrated that the mean shifted toward extreme observations, whereas the median remained much more stable.
+
+Based on the skewness direction, median imputation was selected because:
+
+- Positive skew → mean pulled upward by very high values.
+- Negative skew → mean pulled downward by very low values.
+
+After imputation, missing-value counts were verified again using:
+
+```python
+df.isnull().sum()
+```
+
+The output confirmed that no missing values remained in the selected numerical features.
+
+
+## 11. Spearman Rank Correlation
+
+Along with Pearson correlation, Spearman Rank Correlation was also computed.
+
+Unlike Pearson correlation, Spearman measures monotonic relationships using ranked values instead of raw values.
+
+The absolute difference between Pearson and Spearman coefficients was calculated for every feature pair.
+
+The three feature pairs with the largest differences were identified.
+
+### Interpretation
+
+If
+
+|Spearman| > |Pearson|
+
+the relationship is likely monotonic but non-linear.
+
+If
+
+|Pearson| ≥ |Spearman|
+
+the relationship is approximately linear.
+
+For feature selection in later machine learning models, Pearson correlation was used for identifying linear relationships, while Spearman correlation provided additional insight into monotonic relationships that Pearson may underestimate.
+
+
+## 12. Grouped Aggregation Analysis
+
+Grouped statistical analysis was performed using:
+
+```python
+df.groupby(categorical_column)[numeric_column].agg(['mean','std','count'])
+```
+
+For each category, the following statistics were calculated:
 
 - Mean
 - Standard Deviation
-- Count
+- Sample Count
 
-This analysis helped compare different categories and understand variations among groups.
+### Interpretation
 
----
+The category with the highest mean indicates the group having the largest average value for the selected numerical feature.
 
-## Output
+The category with the highest standard deviation exhibits the greatest internal variability.
 
-The cleaned dataset was saved as:
+High within-group variability suggests that the categorical feature alone cannot completely explain differences in the numerical variable.
 
-```text
-cleaned_data.csv
+The ratio between the highest group mean and the lowest group mean was also calculated.
+
+A large ratio indicates that the categorical feature carries useful predictive information for future machine learning models.
+
+
+## 13. Saving the Clean Dataset
+
+After completing all preprocessing and exploratory analysis steps, the cleaned dataset was saved using:
+
+```python
+df.to_csv("cleaned_data.csv", index=False)
 ```
 
-This cleaned dataset is used in all subsequent parts of the project.
+This dataset serves as the standardized input for Part 2 (Supervised Machine Learning) and Part 3 (Advanced Modeling).
 
----
 
-# Part 2 – Supervised Machine Learning
+
+# Part 2 – Supervised Machine Learning Model
 
 ## Objective
 
-The objective of Part 2 was to build and evaluate both regression and classification models using the cleaned dataset. Different preprocessing techniques, feature engineering methods, regularization techniques, class balancing methods, evaluation metrics, and threshold analysis were performed to compare model performance.
+After completing data cleaning and exploratory analysis in Part 1, the next step was to develop predictive machine learning models using the cleaned dataset.
+
+The primary goal of this phase was to build two supervised learning models:
+
+- A **Regression Model** for predicting the continuous selling price of a house.
+- A **Binary Classification Model** for identifying whether a house belongs to the higher-priced or lower-priced category.
+
+To ensure reliable model performance, the entire workflow followed standard machine learning practices, including proper preprocessing, leak-free train-test splitting, feature scaling, model training, evaluation, and performance comparison.
+
+The complete workflow performed in this part includes:
+
+- Loading the cleaned dataset
+- Defining regression and classification targets
+- Encoding categorical variables
+- Train-test splitting
+- Feature scaling
+- Linear Regression
+- Ridge Regression
+- Logistic Regression
+- Handling class imbalance
+- Model evaluation
+- ROC Curve analysis
+- Decision threshold analysis
+- Regularization experiments
+- Bootstrap confidence interval estimation
+
+The cleaned dataset generated in Part 1 was used throughout this section to maintain consistency and ensure that every model was trained on identical preprocessed data.
 
 ---
 
-## Target Variables
+## 1. Loading the Clean Dataset
 
-Two prediction tasks were performed.
+The cleaned dataset generated during Part 1 was loaded into a Pandas DataFrame using:
+
+```python
+pd.read_csv("cleaned_data.csv")
+```
+
+Using the cleaned dataset ensures that all preprocessing tasks—including missing value handling, duplicate removal, datatype correction, and exploratory analysis—have already been completed before model training begins.
+
+This approach keeps the machine learning workflow reproducible and prevents repeating unnecessary preprocessing steps in later stages of the project.
+
+After loading the dataset, its dimensions and data types were verified once again to confirm that the exported file was successfully imported without any modification.
+
+---
+
+## 2. Target Variable Definition
+
+Two separate prediction problems were created from the cleaned dataset.
 
 ### Regression Target
 
-- SalePrice
+The continuous target selected for the regression task was:
+
+**SalePrice**
+
+The regression model attempts to predict the actual selling price of a house based on its features.
+
+---
 
 ### Classification Target
 
-- PriceCategory
-
-The classification target was created by comparing each house price with the median sale price.
+A binary classification target was created by comparing each house's selling price with the median selling price of the dataset.
 
 ```python
 PriceCategory = (SalePrice > SalePrice.median()).astype(int)
 ```
 
-This creates two balanced classes:
+This transformation divides the dataset into two classes:
 
-- 0 → Lower Price
-- 1 → Higher Price
+- **0 → Lower-priced house**
+- **1 → Higher-priced house**
 
----
+Using the median creates nearly balanced classes, making the classification task more suitable for Logistic Regression and reducing bias toward any single class.
 
-## Data Preprocessing
-
-The cleaned dataset generated in Part 1 was used.
-
-The following preprocessing steps were performed:
-
-- Selected input features.
-- Separated regression and classification targets.
-- Applied One-Hot Encoding to categorical variables.
-- Dropped the first dummy column to avoid multicollinearity.
-- Split the dataset into training and testing sets.
-- Applied StandardScaler.
-- Fitted the scaler only on training data.
-- Transformed both training and testing datasets.
-
-Fitting the scaler only on the training dataset prevents **data leakage**, ensuring that the test set remains completely unseen during training.
+Both target definitions were used throughout the remaining experiments in this project.
 
 ---
 
-# Regression Models
+## 3. Encoding Categorical Features
 
-Two regression models were implemented.
+Machine learning algorithms require numerical input features. Since the dataset contains both numerical and categorical variables, categorical features were encoded before model training.
 
-## Linear Regression
+Two different encoding techniques were applied depending on the nature of the categorical variable.
 
-Evaluation metrics:
+### Ordinal Encoding
+
+Categorical variables having a meaningful order were encoded using integer values that preserve their natural ranking.
+
+For example:
+
+```
+Poor < Fair < Average < Good < Excellent
+```
+
+Maintaining this ordering allows the model to understand the relative relationship between categories.
+
+---
+
+### One-Hot Encoding
+
+Categorical variables without any natural order were converted into dummy variables using:
+
+```python
+pd.get_dummies(drop_first=True)
+```
+
+Dropping the first dummy variable helps prevent multicollinearity by avoiding redundant information.
+
+One-Hot Encoding treats every category independently and prevents the model from incorrectly assuming that one category is numerically larger or smaller than another.
+
+This makes it the preferred encoding technique for nominal categorical variables such as neighborhood names, zoning types, or sale conditions.
+
+---
+
+
+## 4. Train-Test Split
+
+Before training any machine learning model, the cleaned dataset was divided into separate training and testing subsets.
+
+The split was performed using:
+
+```python
+train_test_split(
+    X,
+    y,
+    test_size=0.20,
+    random_state=42
+)
+```
+
+The dataset was divided as follows:
+
+- **80% Training Data**
+- **20% Testing Data**
+
+The training set was used to learn the model parameters, while the testing set was kept completely unseen during training and used only for final evaluation.
+
+A fixed `random_state=42` was used to ensure that the same train-test split can be reproduced whenever the notebook is executed again.
+
+Keeping an independent test set provides a realistic estimate of how well the trained model is expected to perform on unseen data.
+
+---
+
+## 5. Feature Scaling
+
+Many machine learning algorithms perform better when numerical features are on a similar scale.
+
+Therefore, numerical features were standardized using **StandardScaler** from Scikit-learn.
+
+```python
+scaler = StandardScaler()
+
+scaler.fit(X_train)
+
+X_train_scaled = scaler.transform(X_train)
+
+X_test_scaled = scaler.transform(X_test)
+```
+
+### Why was the scaler fitted only on the training data?
+
+The scaler was intentionally fitted **only on the training dataset**.
+
+The same fitted scaler was then used to transform both the training and testing datasets.
+
+This prevents **data leakage**, which occurs when information from the test set accidentally influences the training process.
+
+If the scaler had been fitted on the complete dataset before splitting, the mean and standard deviation of the testing samples would already be known during training.
+
+This would make the evaluation unrealistically optimistic because the model would indirectly receive information from data that should remain completely unseen.
+
+Using training statistics only ensures that the evaluation reflects real-world model performance on new data.
+
+---
+
+## 6. Linear Regression
+
+The first predictive model developed for the regression task was **Linear Regression**.
+
+The model was trained using the standardized training features.
+
+```python
+LinearRegression()
+```
+
+Predictions were generated on the test dataset and evaluated using the following performance metrics:
+
+- Mean Squared Error (MSE)
+- Coefficient of Determination (R² Score)
+
+The model coefficients were extracted together with their corresponding feature names.
+
+The three features having the largest absolute coefficient values were identified because they contribute the most toward predicting the selling price.
+
+### Interpretation of Regression Coefficients
+
+A **positive coefficient** indicates that increasing the corresponding standardized feature increases the predicted house price while all other variables remain constant.
+
+A **negative coefficient** indicates that increasing the feature decreases the predicted selling price when the remaining features are unchanged.
+
+Features with larger absolute coefficient values have a stronger influence on the model's predictions.
+
+Although Linear Regression provides an easily interpretable baseline model, it can become unstable when highly correlated features are present.
+
+For this reason, Ridge Regression was also evaluated.
+
+---
+
+## 7. Ridge Regression
+
+To reduce the effect of multicollinearity and overly large coefficients, a Ridge Regression model was trained using:
+
+```python
+Ridge(alpha=1.0)
+```
+
+The same training-testing split and standardized features used for Linear Regression were reused to ensure a fair comparison.
+
+Model performance was evaluated using:
 
 - Mean Squared Error (MSE)
 - R² Score
 
-The learned coefficients were analyzed to understand feature influence on house prices.
+The evaluation results of Ridge Regression were compared directly with those obtained from ordinary Linear Regression.
+
+### Comparison with Linear Regression
+
+A comparison table was prepared in the README containing:
+
+| Model | Mean Squared Error | R² Score |
+|-------|--------------------|----------|
+| Linear Regression | ... | ... |
+| Ridge Regression | ... | ... |
+
+(The actual values are generated automatically when the notebook is executed.)
+
+### Why did Ridge Regression produce different results?
+
+Unlike ordinary Linear Regression, Ridge Regression introduces an **L2 regularization penalty** that discourages excessively large coefficient values.
+
+Instead of allowing coefficients to grow freely, Ridge shrinks them toward zero, making the model more stable when several predictors are highly correlated.
+
+This often improves generalization performance by reducing overfitting.
+
+The **alpha** parameter controls the strength of regularization.
+
+- A **small alpha** behaves similarly to ordinary Linear Regression.
+- A **larger alpha** applies stronger coefficient shrinkage, reducing model complexity but potentially increasing bias.
+
+Selecting an appropriate alpha value provides a balance between bias and variance, allowing the model to perform better on previously unseen data.
+
 
 ---
 
-## Ridge Regression
+## 8. Logistic Regression
 
-Ridge Regression was trained using:
+For the binary classification task, a **Logistic Regression** model was trained using the standardized training dataset.
+
+The model was initialized with:
 
 ```python
-alpha = 1.0
+LogisticRegression(max_iter=1000)
 ```
 
-Ridge Regression adds **L2 Regularization**, reducing excessively large coefficients and improving model generalization.
+A higher value of `max_iter` was used to ensure that the optimization algorithm converged successfully during training.
 
-The model was compared with Linear Regression using:
+The trained model was then used to generate:
 
-- MSE
-- R² Score
+- Predicted class labels
+- Predicted class probabilities
+
+The predicted probabilities were later used for ROC Curve analysis, AUC calculation, threshold sensitivity analysis, and bootstrap confidence interval estimation.
 
 ---
 
-# Classification Model
+## 9. Handling Class Imbalance
 
-## Logistic Regression
+Before training the Logistic Regression model, the distribution of the target classes was examined using:
 
-Binary classification was performed using Logistic Regression.
+```python
+y_train.value_counts()
+```
 
-The model was evaluated using:
+The assignment requires checking whether one class contains fewer than **35%** of the training samples.
 
+If significant imbalance exists, the model may become biased toward predicting the majority class.
+
+To address this issue, one of the following approaches can be used:
+
+- SMOTE (Synthetic Minority Over-sampling Technique)
+- `class_weight="balanced"`
+
+In this project, **class_weight="balanced"** was selected.
+
+```python
+LogisticRegression(
+    class_weight="balanced",
+    max_iter=1000
+)
+```
+
+### Why was class_weight="balanced" chosen?
+
+Instead of creating synthetic observations, the algorithm automatically assigns larger penalties to mistakes made on the minority class.
+
+This allows the model to pay more attention to underrepresented samples while preserving the original training data.
+
+The class distribution before and after balancing was reported to demonstrate whether imbalance handling was required.
+
+---
+
+## 10. Classification Performance Evaluation
+
+After training the Logistic Regression model, predictions were generated on the test dataset.
+
+The following evaluation metrics were calculated:
+
+- Confusion Matrix
 - Accuracy
 - Precision
 - Recall
 - F1 Score
-- Confusion Matrix
-- ROC Curve
-- ROC-AUC Score
+
+The complete classification report was generated using:
+
+```python
+classification_report()
+```
+
+The confusion matrix summarizes the prediction results into four categories:
+
+- True Positive (TP)
+- True Negative (TN)
+- False Positive (FP)
+- False Negative (FN)
+
+This provides a more detailed evaluation than accuracy alone by identifying the types of prediction errors made by the model.
 
 ---
 
-## SMOTE
+## 11. ROC Curve and AUC
 
-SMOTE (Synthetic Minority Oversampling Technique) was demonstrated to balance the training dataset.
+Since Logistic Regression produces prediction probabilities, the Receiver Operating Characteristic (ROC) curve was plotted.
 
-SMOTE generates synthetic minority-class samples, helping reduce bias toward the majority class and improving classification performance.
+The ROC Curve was generated using:
+
+```python
+roc_curve()
+```
+
+The Area Under the Curve (AUC) was calculated using:
+
+```python
+roc_auc_score()
+```
+
+The ROC plot includes:
+
+- False Positive Rate (FPR) on the x-axis
+- True Positive Rate (TPR) on the y-axis
+- AUC value displayed on the figure
+
+### Interpretation of AUC
+
+The Area Under the ROC Curve measures how effectively the model distinguishes between the two classes.
+
+- An AUC close to **1.0** indicates excellent class separation.
+- An AUC around **0.5** indicates performance similar to random guessing.
+- Higher AUC values represent better classification performance across different decision thresholds.
+
+In this project, the obtained AUC demonstrates the model's ability to distinguish between lower-priced and higher-priced houses based on the selected features.
 
 ---
 
-## Precision and Recall
+## 12. Precision and Recall
 
-Precision
+Although overall accuracy is useful, it does not always provide a complete picture of classification performance.
 
-```text
+Therefore, Precision and Recall were also evaluated.
+
+### Precision Formula
+
+```
 Precision = TP / (TP + FP)
 ```
 
-Recall
+Precision measures the proportion of predicted positive observations that are actually positive.
 
-```text
+A high Precision indicates that the model makes relatively few false positive predictions.
+
+---
+
+### Recall Formula
+
+```
 Recall = TP / (TP + FN)
 ```
 
-Precision measures how many predicted positive samples are actually positive.
+Recall measures the proportion of actual positive observations that are correctly identified by the model.
 
-Recall measures how many actual positive samples are correctly identified.
-
-The F1 Score provides a balanced measure by combining Precision and Recall.
+A high Recall indicates that the model successfully detects most positive cases while producing fewer false negatives.
 
 ---
 
-## ROC Curve and AUC
+### Which Metric is More Important?
 
-The ROC Curve was generated using predicted probabilities from Logistic Regression.
+For this project, **Recall** was considered slightly more important than Precision.
 
-The ROC-AUC score measures the model's ability to distinguish between lower-priced and higher-priced houses.
+The objective is to correctly identify as many higher-priced houses as possible.
 
-Higher AUC values indicate better classification performance.
+Missing a genuinely high-value property (False Negative) may result in losing valuable information for pricing analysis.
+
+Although increasing Recall may introduce some additional False Positives, detecting most valuable properties is generally more beneficial for this prediction task.
 
 ---
 
-## Decision Threshold Analysis
+## 13. Decision Threshold Sensitivity Analysis
 
-Instead of relying only on the default threshold of **0.50**, multiple thresholds were evaluated.
+By default, Logistic Regression predicts the positive class whenever the predicted probability is greater than **0.50**.
 
-Thresholds tested:
+To study the effect of different thresholds, prediction probabilities were generated using:
+
+```python
+model.predict_proba(X_test_scaled)[:,1]
+```
+
+The decision threshold was varied from:
 
 - 0.30
 - 0.40
@@ -365,504 +886,607 @@ For each threshold, the following metrics were calculated:
 - Recall
 - F1 Score
 
-Lower thresholds generally improve Recall, while higher thresholds improve Precision.
+The results were summarized in a comparison table.
+
+| Threshold | Precision | Recall | F1 Score |
+|-----------|-----------|---------|----------|
+| 0.30 | ... | ... | ... |
+| 0.40 | ... | ... | ... |
+| 0.50 | ... | ... | ... |
+| 0.60 | ... | ... | ... |
+| 0.70 | ... | ... | ... |
+
+(The values shown above are automatically generated when the notebook is executed.)
+
+### Interpretation
+
+Lowering the decision threshold increases Recall because more observations are classified as positive.
+
+However, this also increases the number of False Positives, reducing Precision.
+
+Increasing the threshold has the opposite effect:
+
+- Precision increases.
+- Recall decreases.
+
+The threshold producing the highest F1 Score was selected as the best balance between Precision and Recall for this dataset.
+
+Depending on the application, the threshold may be increased to prioritize Precision or decreased to prioritize Recall.
 
 ---
 
-## Logistic Regression Regularization
+## 14. Regularization Experiment using Different C Values
 
-A second Logistic Regression model was trained using:
+To study the effect of regularization, a second Logistic Regression model was trained using:
 
 ```python
-C = 0.01
+LogisticRegression(C=0.01)
 ```
 
-Smaller values of **C** apply stronger regularization.
+This model was compared with the baseline model:
 
-Both Logistic Regression models were compared using:
+```python
+LogisticRegression(C=1.0)
+```
+
+The following evaluation metrics were compared:
 
 - Precision
 - Recall
-- F1 Score
-- ROC-AUC Score
+- ROC-AUC
+
+A comparison table was included in the README.
+
+| Model | Precision | Recall | ROC-AUC |
+|--------|-----------|---------|----------|
+| Logistic Regression (C=1.0) | ... | ... | ... |
+| Logistic Regression (C=0.01) | ... | ... | ... |
+
+### What does C control?
+
+The parameter **C** controls the strength of regularization.
+
+It is the inverse of regularization strength.
+
+- Larger C → weaker regularization
+- Smaller C → stronger regularization
+
+Reducing C forces the model coefficients to become smaller, producing a simpler model that is generally less prone to overfitting.
+
+The experimental results were analyzed to determine whether stronger regularization improved or reduced classification performance on this dataset.
 
 ---
 
-## Bootstrap Confidence Interval
+## 15. Bootstrap Confidence Interval for AUC Difference
 
-Bootstrap sampling was performed using **500 iterations**.
+To evaluate whether the performance difference between the two Logistic Regression models was statistically reliable, a bootstrap analysis was performed.
 
-The AUC difference between both Logistic Regression models was calculated for each bootstrap sample.
+A total of **500 bootstrap samples** were generated from the test dataset using sampling with replacement.
 
-The following statistics were reported:
+For each bootstrap sample:
+
+- ROC-AUC was calculated for the baseline model (C=1.0).
+- ROC-AUC was calculated for the strongly regularized model (C=0.01).
+- The difference between both AUC values was recorded.
+
+Finally, the following statistics were computed:
 
 - Mean AUC Difference
-- Lower 95% Confidence Limit
-- Upper 95% Confidence Limit
+- 2.5th Percentile
+- 97.5th Percentile
 
-The confidence interval was examined to determine whether the observed performance difference was statistically significant.
+These values form the **95% Bootstrap Confidence Interval**.
 
----
+### Interpretation
 
-## Output
+If the confidence interval does **not** include zero, the observed performance difference is considered consistent across different samples and is therefore likely to be statistically reliable.
 
-The notebook successfully generated:
+If the confidence interval **includes zero**, the difference between the two models may simply be due to sampling variability rather than a genuine improvement.
 
-- Regression Metrics
-- Classification Metrics
-- Confusion Matrix
-- ROC Curve
-- Threshold Comparison
-- Regularization Comparison
-- Bootstrap Confidence Interval
+Bootstrap analysis provides additional confidence that the selected model consistently performs better instead of relying on a single train-test split.
 
 
----
 
-# Part 3 – Advanced Machine Learning
+# Part 3 – Advanced Modeling, Ensemble Learning and ML Pipeline
 
 ## Objective
 
-The objective of Part 3 was to improve classification performance by implementing advanced machine learning algorithms, comparing different models, performing hyperparameter tuning, evaluating feature importance, validating model stability, and saving the best-performing model for future use.
+After developing baseline regression and classification models in Part 2, the next objective was to evaluate more powerful machine learning algorithms and determine which model performs best on unseen data.
+
+This part focuses on improving predictive performance using ensemble learning techniques, hyperparameter tuning, cross-validation, and a fully reproducible machine learning pipeline.
+
+The workflow includes:
+
+- Decision Tree baseline
+- Controlled Decision Tree
+- Gini vs Entropy comparison
+- Random Forest
+- Feature importance analysis
+- Feature ablation study
+- Gradient Boosting
+- Cross-validation
+- Hyperparameter tuning using GridSearchCV
+- Manual learning curve analysis
+- Model serialization
+- Final model comparison
+
+The best-performing model is finally saved for deployment and later reused in Part 4.
 
 ---
 
-# Decision Tree (Baseline Model)
+# 1. Decision Tree Baseline
 
-A baseline Decision Tree Classifier was trained using the default parameters.
-
-## Results
-
-- Training Accuracy: **100.00%**
-- Testing Accuracy: **87.33%**
-
-### Interpretation
-
-The baseline Decision Tree achieved perfect accuracy on the training dataset but lower accuracy on the testing dataset.
-
-This indicates **overfitting**, where the model memorizes the training data instead of learning general patterns.
-
-Decision Trees are high-variance models because they continue splitting until nearly every training sample is classified correctly.
-
----
-
-# Controlled Decision Tree
-
-To reduce overfitting, a second Decision Tree model was trained with controlled complexity.
+A baseline Decision Tree Classifier was trained using the default sklearn parameters.
 
 ```python
-max_depth = 5
-min_samples_split = 20
+DecisionTreeClassifier(random_state=42)
 ```
 
-## Results
-
-- Training Accuracy: **93.84%**
-- Testing Accuracy: **90.41%**
+Both training accuracy and testing accuracy were calculated.
 
 ### Interpretation
 
-Limiting the maximum depth reduces model complexity.
+The unconstrained Decision Tree achieved extremely high training accuracy but noticeably lower testing accuracy.
 
-Increasing the minimum number of samples required for splitting prevents unnecessary branches and improves generalization.
+This behaviour indicates **overfitting**.
 
-The smaller gap between training and testing accuracy indicates reduced overfitting.
+The model learns many small patterns and even noise present in the training data, allowing it to perform exceptionally well on familiar data while generalizing poorly to unseen observations.
+
+Decision Trees are often described as **high-variance models** because every split is selected greedily based on the current subset of data, and earlier decisions are never revisited. Small changes in the training dataset can therefore produce very different tree structures.
 
 ---
 
-# Gini vs Entropy Comparison
+# 2. Controlled Decision Tree
 
-Two Decision Tree models were trained using different splitting criteria.
+To reduce overfitting, a second Decision Tree was trained with controlled complexity.
 
-## Results
+```python
+DecisionTreeClassifier(
+    max_depth=5,
+    min_samples_split=20,
+    random_state=42
+)
+```
 
-| Criterion | Testing Accuracy |
-|-----------|-----------------:|
-| Gini | 89.38% |
-| Entropy | 91.44% |
+Training accuracy and testing accuracy were again evaluated.
+
+### Why These Parameters?
+
+**max_depth**
+
+Limits how deep the tree is allowed to grow.
+
+Restricting tree depth prevents the model from memorizing individual observations and usually improves generalization.
+
+**min_samples_split**
+
+Requires a minimum number of samples before creating another split.
+
+This prevents unnecessary splits on very small subsets that are often caused by random noise.
+
+### Interpretation
+
+Compared with the unconstrained tree, the controlled tree showed a smaller gap between training and testing accuracy.
+
+Although the training accuracy decreased slightly, the testing performance became more reliable, indicating improved generalization and reduced overfitting.
+
+
+
+# 3. Gini vs Entropy Comparison
+
+To compare different splitting criteria, two Decision Tree models were trained using the same hyperparameters while changing only the impurity measure.
+
+```python
+DecisionTreeClassifier(
+    criterion="gini",
+    max_depth=5,
+    random_state=42
+)
+
+DecisionTreeClassifier(
+    criterion="entropy",
+    max_depth=5,
+    random_state=42
+)
+```
+
+The test accuracy of both models was recorded and compared.
 
 ### Gini Impurity
 
-```text
-Gini = 1 − Σ(pi²)
-```
+The Gini Impurity used by CART Decision Trees is defined as:
+
+\[
+Gini = 1 - \sum p_i^2
+\]
+
+where \(p_i\) represents the probability of each class within a node.
 
 ### Entropy
 
-```text
-Entropy = − Σ(pi log₂(pi))
-```
+Entropy measures the amount of uncertainty present in a node.
+
+\[
+Entropy = - \sum p_i \log_2(p_i)
+\]
 
 ### Interpretation
 
-Both criteria measure node impurity.
+A node with **Gini = 0** is considered perfectly pure because every observation belongs to a single class.
 
-For this dataset, the Entropy-based Decision Tree achieved slightly better testing accuracy.
+Both Gini and Entropy aim to produce pure child nodes, although they calculate impurity differently.
+
+In this project, both criteria produced very similar predictive performance. The difference in accuracy was minimal, indicating that either impurity measure can effectively separate the classes for this dataset.
 
 ---
 
-# Random Forest Classifier
+# 4. Random Forest Classifier
 
-A Random Forest Classifier was trained using:
+A Random Forest classifier was trained to improve predictive performance through ensemble learning.
 
 ```python
-n_estimators = 100
-max_depth = 10
-random_state = 42
+RandomForestClassifier(
+    n_estimators=100,
+    max_depth=10,
+    random_state=42
+)
 ```
 
-## Results
+The following evaluation metrics were computed:
 
-- Training Accuracy: **99.74%**
-- Testing Accuracy: **92.81%**
-- ROC-AUC Score: **0.9796**
+- Training Accuracy
+- Test Accuracy
+- ROC-AUC Score
 
-### Top 5 Important Features
+Compared with a single Decision Tree, Random Forest produced more stable predictions and showed better generalization on unseen data.
 
-| Feature | Importance |
-|---------|-----------:|
-| GrLivArea | 0.067951 |
-| YearBuilt | 0.059878 |
-| FullBath | 0.055129 |
-| OverallQual | 0.054327 |
-| GarageCars | 0.051691 |
+### Feature Importance
 
-### Interpretation
-
-Random Forest combines multiple Decision Trees using the **Bagging** technique.
-
-Each tree is trained on a different bootstrap sample while considering random subsets of features during splitting.
-
-The final prediction is obtained by combining predictions from all trees, improving robustness and reducing overfitting.
-
----
-
-# Gradient Boosting Classifier
-
-Gradient Boosting was trained using:
+Feature importance values were obtained using:
 
 ```python
-n_estimators = 100
-learning_rate = 0.1
-random_state = 42
+model.feature_importances_
 ```
 
-## Results
-
-- Training Accuracy: **99.32%**
-- Testing Accuracy: **93.49%**
-- ROC-AUC Score: **0.9816**
+The five most important features along with their importance scores were identified and ranked.
 
 ### Interpretation
 
-Gradient Boosting builds trees sequentially.
+Random Forest measures feature importance based on the **average reduction in Gini impurity** contributed by each feature across all trees in the forest.
 
-Each new tree attempts to correct the errors made by previous trees.
+Features that consistently produce better splits receive higher importance scores because they contribute more toward reducing classification uncertainty.
 
-This sequential learning process generally improves prediction accuracy while reducing bias.
+Unlike Linear Regression coefficients, feature importance values do not indicate whether a feature increases or decreases the prediction. Instead, they only measure how useful a feature is for making accurate splits during tree construction.
+
+### Bagging Concept
+
+Random Forest improves prediction accuracy using **Bootstrap Aggregating (Bagging).**
+
+Each tree is trained on a different bootstrap sample created by randomly selecting training observations **with replacement**.
+
+Additionally, at every split, only a random subset of approximately **√(number of features)** is considered instead of all available features.
+
+Because every tree learns from slightly different data and different subsets of features, the individual prediction errors become less correlated.
+
+The final prediction is obtained by combining predictions from all trees, which significantly reduces variance and makes Random Forest much less prone to overfitting than a single deep Decision Tree.
 
 ---
 
-# Feature Ablation Study
+# 5. Gradient Boosting Classifier
 
-The five least important features identified by Random Forest were removed.
+A Gradient Boosting classifier was also trained for comparison.
 
-The Random Forest model was retrained using the reduced feature set.
+```python
+GradientBoostingClassifier(
+    n_estimators=100,
+    learning_rate=0.1,
+    max_depth=3,
+    random_state=42
+)
+```
 
-## Removed Features
+The following performance metrics were evaluated:
 
-- Condition2_PosN
-- Neighborhood_BrDale
-- Condition2_RRNn
-- MiscFeature_TenC
-- Exterior2nd_Other
-
-## Results
-
-| Model | ROC-AUC |
-|--------|---------:|
-| Full Model | 0.9796 |
-| Reduced Model | 0.9770 |
+- Training Accuracy
+- Test Accuracy
+- ROC-AUC Score
 
 ### Interpretation
 
-Removing the least important features caused only a very small reduction in ROC-AUC.
+Unlike Random Forest, which trains many trees independently, Gradient Boosting builds trees sequentially.
 
-This suggests that these features contributed very little to prediction performance.
+Each new tree attempts to correct the prediction errors made by the previous trees.
 
-A simpler model with fewer features can reduce computational cost while maintaining similar accuracy.
+Because every successive model focuses on reducing the remaining errors, Gradient Boosting often achieves higher predictive accuracy on structured tabular datasets.
 
----
+However, this sequential learning process also makes the algorithm more sensitive to hyperparameter selection and increases training time compared with Random Forest.
 
-# Cross Validation
+The Gradient Boosting model was later included in the cross-validation comparison to evaluate whether its improved complexity translated into better generalization performance.
 
-A **5-Fold Stratified Cross Validation** was performed.
 
-## Results
+# 6. Feature Ablation Study
 
-| Model | Mean ROC-AUC | Standard Deviation |
-|------|-------------:|-------------------:|
-| Logistic Regression | 0.9514 | 0.0125 |
-| Decision Tree | 0.9296 | 0.0107 |
-| Random Forest | 0.9807 | 0.0056 |
-| Gradient Boosting | 0.9787 | 0.0073 |
+To understand whether all input features were contributing meaningfully to the model, a feature ablation study was performed.
+
+Using the feature importance scores obtained from the Random Forest model, the five least important features were identified.
+
+A second Random Forest model was then trained after removing these five features while keeping all other hyperparameters unchanged.
+
+The ROC-AUC scores of both models were compared.
+
+- Full Model (All Features)
+- Reduced Model (Lowest 5 Features Removed)
 
 ### Interpretation
 
-Cross-validation provides a more reliable estimate of model performance because every sample is used for both training and validation.
+If the reduced model achieves nearly the same ROC-AUC as the full model, it suggests that the removed features contributed very little useful information and mainly added complexity.
 
-Random Forest achieved the highest average ROC-AUC with the lowest variation across folds.
+On the other hand, if the ROC-AUC decreases noticeably after removing those features, they still provide useful predictive information despite having relatively low importance scores.
+
+In this project, the comparison helped determine whether a simpler model could be deployed without sacrificing predictive performance.
+
+Reducing unnecessary features can lower computational cost, simplify maintenance, and improve inference speed, provided that predictive accuracy remains nearly unchanged.
 
 ---
 
-# Hyperparameter Tuning using GridSearchCV
+# 7. Cross-Validated Model Comparison
 
-A machine learning pipeline was created using:
+Instead of relying on a single train-test split, all major classification models were evaluated using **5-fold Stratified Cross-Validation**.
 
-- SimpleImputer
-- StandardScaler
-- RandomForestClassifier
+The following models were compared:
 
-The following hyperparameters were tuned:
+- Logistic Regression
+- Controlled Decision Tree
+- Random Forest
+- Gradient Boosting
+
+Cross-validation was performed using:
+
+```python
+StratifiedKFold(
+    n_splits=5,
+    shuffle=True,
+    random_state=42
+)
+```
+
+Each model was evaluated using **ROC-AUC** as the scoring metric.
+
+For every model, the following statistics were reported:
+
+- Mean ROC-AUC
+- Standard Deviation of ROC-AUC
+
+### Why Cross-Validation?
+
+A single train-test split may accidentally produce optimistic or pessimistic results depending on how the data is divided.
+
+Cross-validation repeatedly trains and evaluates the model on different subsets of the data.
+
+This provides a much more reliable estimate of how the model is expected to perform on unseen data.
+
+The standard deviation of the cross-validation scores also indicates the stability of the model.
+
+A lower standard deviation suggests that the model performs consistently across different subsets of the dataset.
+
+---
+
+# 8. Hyperparameter Tuning using GridSearchCV
+
+To obtain the best-performing Random Forest model, hyperparameter tuning was performed using **GridSearchCV**.
+
+A machine learning pipeline was created to ensure that preprocessing and model training occurred together without introducing data leakage.
+
+```python
+Pipeline([
+    ("imputer", SimpleImputer(strategy="median")),
+    ("scaler", StandardScaler()),
+    ("randomforestclassifier", RandomForestClassifier(random_state=42))
+])
+```
+
+The following hyperparameters were explored:
 
 - n_estimators = [50, 100, 200]
 - max_depth = [5, 10, None]
 - min_samples_leaf = [1, 5]
 
-## Best Parameters
+The pipeline was evaluated using:
 
-| Parameter | Value |
-|-----------|------:|
-| n_estimators | 200 |
-| max_depth | 10 |
-| min_samples_leaf | 1 |
+- 5-fold Stratified Cross-Validation
+- ROC-AUC scoring
 
-### Best Mean ROC-AUC
+After completion, the following outputs were recorded:
 
-**0.9812**
+- Best Hyperparameters
+- Best Cross-Validation ROC-AUC Score
 
-A total of **18 parameter combinations** were evaluated.
+### Number of Models Evaluated
 
-Using **5-fold cross-validation**, the Grid Search performed:
+The parameter grid contains:
 
-```text
-18 × 5 = 90 model fits
+- 3 values for n_estimators
+- 3 values for max_depth
+- 2 values for min_samples_leaf
+
+Total combinations:
+
 ```
+3 × 3 × 2 = 18 models
+```
+
+Since each combination was evaluated using **5-fold Cross-Validation**, the total number of model fits performed was:
+
+```
+18 × 5 = 90 model trainings
+```
+
+### Grid Search vs Randomized Search
+
+Grid Search evaluates every possible hyperparameter combination, making it thorough but computationally expensive.
+
+Randomized Search evaluates only a random subset of combinations, making it much faster for large search spaces while often achieving comparable performance.
+
+For this project, Grid Search was selected because the parameter grid was relatively small and exhaustive evaluation was feasible.
 
 ---
 
-# Manual Learning Curve
+# 9. Manual Learning Curve Analysis
 
-The best pipeline was trained using different fractions of the training data.
+To understand how training data size affects model performance, a manual learning curve was created using the best pipeline obtained from GridSearchCV.
 
-| Training Fraction | Training ROC-AUC | Testing ROC-AUC |
-|------------------:|-----------------:|----------------:|
-| 20% | 1.0000 | 0.9796 |
-| 40% | 1.0000 | 0.9795 |
-| 60% | 1.0000 | 0.9779 |
-| 80% | 1.0000 | 0.9813 |
-| 100% | 0.9999 | 0.9806 |
+The model was trained using progressively larger portions of the training data:
+
+- 20%
+- 40%
+- 60%
+- 80%
+- 100%
+
+For each training fraction, two metrics were calculated:
+
+- Training ROC-AUC
+- Test ROC-AUC
 
 ### Interpretation
 
-The testing ROC-AUC remained nearly constant around **0.98**.
+As expected, the training ROC-AUC gradually decreased as more training samples were included.
 
-This indicates that the model has reached stable performance.
+Small datasets are easier for a model to memorize, resulting in very high training performance.
 
-Further improvements are more likely to come from feature engineering rather than simply collecting more training data.
+As additional training data became available, memorization became more difficult, causing training performance to decrease slightly.
+
+Meanwhile, the test ROC-AUC generally improved as more data was used for training.
+
+This indicates that the model benefited from additional training examples and learned more generalized decision boundaries.
+
+If the test ROC-AUC continues increasing even at 100% of the available training data, collecting more data would likely improve future model performance.
+
+If the test ROC-AUC has already plateaued, model improvements are more likely to come from better algorithms or feature engineering rather than additional data.
 
 ---
 
-# Model Serialization
+# 10. Model Serialization
 
-The best pipeline obtained from GridSearchCV was saved using Joblib.
+The best-performing pipeline obtained from GridSearchCV was saved for future use.
 
 ```python
 joblib.dump(best_pipeline, "best_model.pkl")
 ```
 
-The saved model was later loaded using:
+The saved model was later reloaded using:
 
 ```python
 loaded_model = joblib.load("best_model.pkl")
 ```
 
-Predictions generated using the loaded model matched the original model, confirming successful serialization.
+The reloaded model was then used to make predictions on manually created test samples.
+
+Successfully loading the model and generating predictions confirmed that the serialization process preserved the complete preprocessing pipeline as well as the trained machine learning model.
+
+Saving trained models eliminates the need to retrain the model every time predictions are required and makes deployment significantly easier.
 
 ---
 
-# Overall Model Comparison
+# 11. Final Model Comparison
 
-| Model | Test Accuracy | ROC-AUC | 5-Fold Mean ROC-AUC |
-|------|--------------:|---------:|--------------------:|
-| Logistic Regression | 87.67% | 0.9620 | 0.9514 |
-| Decision Tree | 87.33% | — | — |
-| Controlled Decision Tree | 90.41% | — | 0.9296 |
-| Random Forest | 92.81% | 0.9796 | 0.9807 |
-| Gradient Boosting | **93.49%** | **0.9816** | 0.9787 |
+All classification models developed in Parts 2 and 3 were compared using the following evaluation metrics:
 
----
+- 5-Fold Cross-Validation Mean ROC-AUC
+- 5-Fold Cross-Validation Standard Deviation
+- Test ROC-AUC
 
-# Final Recommendation
+This comparison provided a fair assessment of each model's predictive performance and consistency.
 
-Among all evaluated models, **Random Forest** and **Gradient Boosting** produced the best performance.
+### Final Recommendation
 
-Gradient Boosting achieved the highest testing accuracy and ROC-AUC.
+Among all evaluated models, the model achieving the highest cross-validated ROC-AUC while maintaining stable performance across folds was selected as the final recommendation.
 
-Random Forest achieved the highest average cross-validation performance while also providing feature importance for model interpretation.
+Although simpler models such as Logistic Regression are easier to interpret, ensemble methods demonstrated stronger predictive capability by capturing more complex relationships within the data.
 
-Therefore, **Random Forest** was selected as the final model for deployment because it provides an excellent balance between predictive performance, stability, interpretability, and robustness.
+Considering predictive accuracy, robustness, and generalization performance, the tuned ensemble model was selected as the best solution for deployment.
+
+This serialized model (`best_model.pkl`) is reused in **Part 4** to provide LLM-powered prediction explanations.
 
 
----
 
-# Part 4 – LLM Powered Feature
-
-## Selected Track
-
-**Track C – Model Prediction Explanation Pipeline**
-
-This track combines the best-performing machine learning model with a Large Language Model (LLM). The trained model first predicts the class and probability for a given house, after which the LLM generates a structured JSON explanation describing the prediction.
-
----
+# Part 4 – LLM Powered Intelligent Feature
 
 ## Objective
 
-The objective of this part was to integrate an LLM on top of the trained machine learning model to generate human-readable prediction explanations while ensuring structured outputs, schema validation, deterministic prompting, and basic safety guardrails.
+The final phase of this project integrates a Large Language Model (LLM) with the machine learning pipeline developed in the previous parts.
+
+Instead of only predicting whether a house belongs to the higher-priced or lower-priced category, the LLM provides a structured explanation describing why the prediction was made.
+
+This layer improves the interpretability of the machine learning model and demonstrates how traditional predictive models can be combined with modern language models to generate human-readable insights.
+
+For this project, **Track C — Model Prediction Explanation Pipeline** was selected.
+
+The workflow consists of:
+
+- Loading the best trained model
+- Generating predictions and prediction probabilities
+- Sending model outputs to an LLM
+- Receiving structured JSON explanations
+- Validating the JSON responses
+- Applying safety guardrails before every API call
 
 ---
 
-# LLM Provider
+# 1. LLM API Connection
 
-The project uses:
+The LLM was accessed through an HTTP API using the Python **requests** library.
 
-- **Provider:** OpenRouter
-- **Model:** `openai/gpt-oss-20b:free`
+For security reasons, the API key was **not hardcoded** inside the notebook.
 
-The API was accessed using the Python `requests` library.
-
----
-
-# API Key Handling
-
-The API key is **not hardcoded** inside the notebook.
-
-Instead, it is loaded from an environment variable.
-
-Example:
+Instead, it was stored as an environment variable.
 
 ```python
-api_key = os.environ["LLM_API_KEY"]
+os.environ["LLM_API_KEY"]
 ```
 
-This keeps the API key secure and prevents accidental exposure in the GitHub repository.
+This approach prevents accidental exposure of sensitive credentials when sharing the repository publicly.
+
+A reusable helper function named `call_llm()` was implemented.
+
+The function performs the following operations:
+
+- Creates the JSON request payload
+- Adds authentication headers
+- Sends an HTTP POST request
+- Checks the response status code
+- Extracts the generated response
+- Returns only the model output
+
+Before integrating the function into the complete pipeline, a simple test prompt was executed requesting the model to return only the word **"hello"**.
+
+The successful response confirmed that the API connection was functioning correctly.
 
 ---
 
-# Reusable LLM Function
+# 2. Prompt Engineering
 
-A reusable function named `call_llm()` was implemented.
+To obtain consistent and structured explanations, a carefully designed system prompt was used.
 
-The function performs the following tasks:
+### System Prompt
 
-- Creates the JSON request payload.
-- Sends an HTTP POST request to the OpenRouter API.
-- Includes authorization headers.
-- Checks whether the API request was successful.
-- Returns only the generated response content.
+The LLM was instructed to behave as a machine learning prediction explanation assistant.
 
-The function was successfully tested using the prompt:
+Its responsibilities included:
 
-```
-Reply with only the word: hello
-```
+- Explaining predictions
+- Producing only valid JSON
+- Avoiding unnecessary text
+- Providing concise reasoning
+- Returning a consistent output structure
 
-The returned output confirmed that the API connection was working correctly.
+The user prompt contained:
 
----
+- Feature values
+- Predicted class
+- Prediction probability
 
-# System Prompt
-
-The exact system prompt used in this project is shown below.
-
-```text
-You are an AI assistant that explains machine learning predictions.
-
-Return ONLY valid JSON.
-
-The JSON must contain exactly these fields:
-
-prediction_label
-confidence_level
-top_reason
-second_reason
-next_step
-```
-
----
-
-# User Prompt Template
-
-The following template was used for every prediction.
-
-```text
-Feature Values:
-{feature_values}
-
-Predicted Class:
-{predicted_class}
-
-Prediction Probability:
-{predicted_probability}
-
-Explain this prediction.
-
-Return ONLY valid JSON using this format:
-
-{
-"prediction_label":"",
-"confidence_level":"",
-"top_reason":"",
-"second_reason":"",
-"next_step":""
-}
-```
-
----
-
-# Why Temperature = 0?
-
-Temperature was set to **0** because this task requires structured and deterministic output.
-
-At temperature **0**, the model consistently selects the highest-probability next token, producing stable JSON responses that are easier to validate.
-
-Higher temperatures introduce randomness, which can change wording, formatting, or even the structure of the generated JSON.
-
----
-
-# Temperature Comparison
-
-The LLM was tested using two temperature values.
-
-| Input | Output at Temperature = 0 | Output at Temperature = 0.7 | Key Difference |
-|-------|---------------------------|-----------------------------|---------------|
-| Record 1 | Deterministic JSON | More varied wording | Higher temperature changes explanations |
-| Record 2 | Deterministic JSON | Different wording | Slight variation in reasoning |
-| Record 3 | Deterministic JSON | More creative explanation | Lower consistency |
-
-### Interpretation
-
-Temperature **0** always produces the most probable output, making it suitable for structured tasks such as JSON generation.
-
-Temperature **0.7** samples from a wider probability distribution, making responses more diverse but less predictable.
-
----
-
-# Structured Output Validation
-
-Every LLM response follows a predefined JSON schema.
-
-The schema contains five required fields:
+The model was instructed to generate a JSON explanation containing fields such as:
 
 - prediction_label
 - confidence_level
@@ -870,172 +1494,275 @@ The schema contains five required fields:
 - second_reason
 - next_step
 
-The validation pipeline performs the following steps:
+### Why Temperature = 0?
 
-1. Strip whitespace.
-2. Parse the response using `json.loads()`.
-3. Validate the parsed JSON using `jsonschema.validate()`.
-4. Catch JSON decoding errors.
-5. Catch schema validation errors.
-6. Return a fallback dictionary containing `None` values if validation fails.
+All LLM requests used:
 
-This ensures that only valid structured responses are accepted.
+```python
+temperature = 0
+```
+
+A temperature of zero makes the model deterministic.
+
+This means that identical inputs consistently produce nearly identical outputs.
+
+Such deterministic behavior is essential for structured JSON generation because unpredictable responses increase the likelihood of parsing or validation errors.
 
 ---
 
-# PII Guardrail
+# 3. Temperature Comparison
 
-Before every LLM call, a regular expression checks whether the user input contains Personally Identifiable Information (PII).
+To study the effect of randomness, every test input was evaluated twice.
 
-The following information is blocked:
+The first request used:
+
+```python
+temperature = 0
+```
+
+The second request used:
+
+```python
+temperature = 0.7
+```
+
+The outputs from both settings were compared.
+
+### Interpretation
+
+Responses generated with **temperature = 0** remained highly consistent and followed the requested JSON schema very closely.
+
+Responses generated with **temperature = 0.7** were more diverse and occasionally used different wording or additional explanations.
+
+While higher temperatures may improve creativity, they also increase variability.
+
+For structured prediction explanations, deterministic outputs are more reliable and therefore temperature 0 was selected for the final implementation.
+
+
+# 4. Structured Output Validation
+
+The responses generated by the LLM were expected to follow a predefined JSON structure so that they could be processed automatically by the application.
+
+To ensure consistency, a JSON schema containing the required fields was defined before making any API calls.
+
+The schema included the following required fields:
+
+- prediction_label
+- confidence_level
+- top_reason
+- second_reason
+- next_step
+
+Each field was defined as a scalar value, ensuring that every explanation returned by the LLM followed the same predictable format.
+
+After receiving the response from the API, leading and trailing whitespace was removed using:
+
+```python
+response.strip()
+```
+
+The cleaned response was then converted into a Python dictionary using:
+
+```python
+json.loads()
+```
+
+Since LLMs may occasionally generate malformed JSON, the parsing process was wrapped inside a `try-except` block.
+
+If the response could not be parsed successfully, a `JSONDecodeError` was caught and a fallback dictionary containing null values was returned instead of stopping the program.
+
+After successful parsing, the output was validated using:
+
+```python
+jsonschema.validate()
+```
+
+This ensured that all required fields were present and matched the expected data types.
+
+Any validation failures were captured using a `ValidationError`, and the same fallback dictionary was returned.
+
+Using schema validation makes the pipeline significantly more reliable because downstream code always receives data in a predictable format.
+
+---
+
+# 5. Model Prediction Explanation Pipeline
+
+The best-performing machine learning model obtained in Part 3 was loaded using:
+
+```python
+joblib.load("best_model.pkl")
+```
+
+Three manually created feature vectors were prepared to evaluate the complete prediction pipeline.
+
+For each input record, the following sequence was performed:
+
+- Encode the feature values
+- Predict the output class
+- Predict the class probability
+- Construct the LLM prompt
+- Send the prompt to the API
+- Receive the structured explanation
+- Parse the JSON response
+- Validate the schema
+- Display the final explanation
+
+Each prompt supplied to the language model contained:
+
+- Input feature values
+- Predicted class
+- Prediction probability
+
+The LLM then generated a structured explanation describing why the model produced its prediction and what the prediction implies.
+
+This approach combines the predictive capability of machine learning with the interpretability provided by large language models.
+
+---
+
+# 6. PII Guardrail
+
+Before every request was sent to the LLM, the user input was checked for personally identifiable information (PII).
+
+Regular expressions were used to detect common sensitive information such as:
 
 - Email addresses
 - Phone numbers
 
-If PII is detected, the API call is skipped and the following message is displayed:
+If sensitive information was detected, the API request was blocked immediately.
+
+Instead of calling the language model, the application displayed:
 
 ```
 Input blocked: PII detected.
 ```
 
----
+This prevents confidential information from being transmitted to external services.
 
-# Guardrail Demonstration
+Two demonstrations were included in the notebook.
 
-| Test Input | Result |
-|------------|--------|
-| user@example.com | Blocked |
-| House feature record | Allowed |
+### Test Case 1
 
-The guardrail successfully blocked inputs containing personal information while allowing normal model explanations.
+Input containing an email address.
 
----
+Result:
 
-# End-to-End Demonstration
-
-The complete pipeline was executed for three different house records.
-
-For each record, the following steps were performed:
-
-1. Load the saved model.
-2. Encode the feature vector.
-3. Predict the class.
-4. Predict the probability.
-5. Generate an LLM explanation.
-6. Parse the JSON response.
-7. Validate the JSON schema.
-8. Report the validation result.
-
----
-
-# Demonstration Results
-
-| Input | Predicted Class | Probability | Valid JSON | Guardrail |
-|------|----------------:|------------:|-----------|-----------|
-| Record 1 | 1 | 0.9917 | PASS | Allowed |
-| Record 2 | 1 | 0.7774 | PASS | Allowed |
-| Record 3 | 1 | 0.9808 | PASS | Allowed |
-
----
-
-# Conclusion
-
-The LLM-powered explanation pipeline was successfully integrated with the best-performing machine learning model.
-
-The implementation satisfies all assignment requirements:
-
-- API key stored using an environment variable.
-- Reusable `call_llm()` function implemented.
-- OpenRouter API successfully connected.
-- Track C completed.
-- Best model loaded using `joblib`.
-- Predictions generated using `.predict()` and `.predict_proba()`.
-- Structured JSON output generated.
-- JSON validated using `jsonschema`.
-- Invalid responses handled using fallback values.
-- PII guardrail implemented.
-- Temperature comparison completed.
-- Three end-to-end demonstrations successfully executed.
-
-The final system combines machine learning prediction with LLM-generated explanations, making model outputs easier to understand while maintaining structured and validated responses.
-
----
-
-# How to Run the Project
-
-## Step 1
-
-Clone the repository.
-
-```bash
-git clone <your-github-repository-link>
+```
+Blocked
 ```
 
+The API call was not executed.
+
+### Test Case 2
+
+Input containing no sensitive information.
+
+Result:
+
+```
+Allowed
+```
+
+The prediction explanation pipeline executed normally.
+
+Implementing this guardrail improves privacy protection and demonstrates responsible use of LLM APIs.
+
 ---
 
-## Step 2
+# 7. End-to-End Demonstration
 
-Move into the project directory.
+The complete prediction explanation pipeline was executed on three different input records.
+
+For every record, the notebook displayed:
+
+- Feature values
+- Predicted class
+- Prediction probability
+- Raw LLM response
+- Parsed JSON
+- Validation result
+
+Each generated explanation successfully followed the predefined schema, allowing the responses to be processed automatically without manual correction.
+
+This demonstrated that the entire workflow—from machine learning prediction to LLM-generated explanation—operated correctly from start to finish.
+
+---
+
+# Part 4 Summary
+
+The final stage of this project demonstrated how Large Language Models can be integrated with traditional machine learning systems to improve interpretability.
+
+Unlike conventional models that only return numerical predictions, the LLM generated structured explanations describing the reasoning behind each prediction in an easy-to-understand format.
+
+Several practical software engineering practices were incorporated into the implementation, including secure API key management, deterministic prompt engineering, JSON schema validation, exception handling, and privacy guardrails.
+
+Together, these additions make the prediction pipeline more reliable, secure, and suitable for real-world deployment scenarios where both prediction accuracy and explainability are equally important.
+
+
+
+# Installation
+
+Clone the repository using Git:
+
+```bash
+git clone https://github.com/Rashid-imam/Applied_AI_ML_Capstone.git
+```
+
+Navigate to the project directory:
 
 ```bash
 cd Applied_AI_ML_Capstone
 ```
 
----
-
-## Step 3
-
-Install the required libraries.
+Install all required Python dependencies:
 
 ```bash
-pip install pandas numpy matplotlib seaborn scikit-learn joblib requests jsonschema
+pip install -r requirements.txt
 ```
 
----
-
-## Step 4
-
-Set your OpenRouter API Key.
-
-**Windows PowerShell**
-
-```powershell
-$env:LLM_API_KEY="YOUR_OPENROUTER_API_KEY"
-```
-
-**Linux / macOS**
+If you are using Jupyter Notebook, launch it using:
 
 ```bash
-export LLM_API_KEY="YOUR_OPENROUTER_API_KEY"
+jupyter notebook
 ```
 
 ---
 
-## Step 5
+# Project Execution
 
-Run the notebooks in the following order:
+Run the notebooks in the following sequence to reproduce the complete workflow:
 
-1. Part 1 – Data Cleaning & EDA
-2. Part 2 – Supervised Machine Learning
-3. Part 3 – Advanced Machine Learning
-4. Part 4 – LLM Powered Feature
+1. **Part1_EDA.ipynb**
+   - Loads the raw dataset
+   - Performs data cleaning
+   - Handles missing values and duplicates
+   - Generates exploratory data analysis (EDA)
+   - Saves the cleaned dataset as `cleaned_data.csv`
+
+2. **Part2_ML.ipynb**
+   - Loads `cleaned_data.csv`
+   - Trains Regression and Classification models
+   - Performs model evaluation
+   - Generates performance metrics and ROC curve
+
+3. **Part3_AdvancedModels.ipynb**
+   - Builds ensemble models
+   - Performs feature ablation study
+   - Executes GridSearchCV
+   - Creates the best machine learning pipeline
+   - Saves the trained model as `best_model.pkl`
+
+4. **Part4_LLM.ipynb**
+   - Loads `best_model.pkl`
+   - Connects with the OpenRouter LLM API
+   - Generates structured prediction explanations
+   - Validates JSON responses
+   - Demonstrates privacy guardrails
+
+Each notebook depends on the outputs generated by the previous notebook, so they should be executed in the above order.
 
 ---
 
-# Required Libraries
-
-- pandas
-- numpy
-- matplotlib
-- seaborn
-- scikit-learn
-- joblib
-- requests
-- jsonschema
-
----
-
-# Repository Contents
+# Repository Structure
 
 ```
 Applied_AI_ML_Capstone/
@@ -1044,61 +1771,107 @@ Applied_AI_ML_Capstone/
 │   ├── train.csv
 │   └── cleaned_data.csv
 │
-├── notebooks/
-│   ├── Part1_Data_Cleaning_EDA.ipynb
-│   ├── Part2_Supervised_ML.ipynb
-│   ├── Part3_Advanced_ML.ipynb
-│   └── Part4_LLM_Powered_Feature.ipynb
-│
 ├── models/
 │   └── best_model.pkl
 │
-├── images/
+├── notebooks/
+│   ├── Part1_EDA.ipynb
+│   ├── Part2_ML.ipynb
+│   ├── Part3_AdvancedModels.ipynb
+│   └── Part4_LLM.ipynb
 │
-└── README.md
+├── README.md
+└── requirements.txt
 ```
 
 ---
 
-# Assignment Summary
+# Technologies Used
 
-This project successfully covers all four parts of the Applied AI / Machine Learning Capstone assignment.
+## Programming Language
 
-✔ Part 1 – Data Cleaning and Exploratory Data Analysis
+- Python 3.x
 
-✔ Part 2 – Supervised Machine Learning
+## Data Analysis
 
-✔ Part 3 – Advanced Machine Learning
+- Pandas
+- NumPy
 
-✔ Part 4 – LLM Powered Feature (Track C)
+## Data Visualization
 
-The project includes:
+- Matplotlib
+- Seaborn
 
-- Data preprocessing
-- Feature engineering
-- Model comparison
-- Hyperparameter tuning
-- Cross-validation
-- Model serialization
-- OpenRouter API integration
-- Prompt engineering
-- JSON schema validation
-- PII guardrails
-- Temperature comparison
-- End-to-end LLM prediction explanation pipeline
+## Machine Learning
+
+- Scikit-learn
+- Imbalanced-learn (SMOTE)
+
+## Model Serialization
+
+- Joblib
+
+## LLM Integration
+
+- Requests
+- JSON
+- JSONSchema
+- Regular Expressions (re)
+- OpenRouter API
+
+## Development Tools
+
+- Jupyter Notebook
+- Visual Studio Code
+- Git
+- GitHub
+
+---
+
+# Learning Outcomes
+
+This project provided practical experience with the complete machine learning lifecycle.
+
+Major concepts implemented during the project include:
+
+- Data Cleaning and Preprocessing
+- Missing Value Imputation
+- Exploratory Data Analysis (EDA)
+- Statistical Analysis
+- Correlation Analysis
+- Feature Engineering
+- Linear Regression
+- Ridge Regression
+- Logistic Regression
+- Decision Tree
+- Random Forest
+- Gradient Boosting
+- Cross Validation
+- Hyperparameter Tuning
+- GridSearchCV
+- Feature Importance Analysis
+- Model Serialization using Joblib
+- LLM Integration using OpenRouter API
+- Prompt Engineering
+- JSON Schema Validation
+- Privacy Guardrails using Regular Expressions
+
+Overall, this project demonstrates a complete end-to-end Artificial Intelligence and Machine Learning workflow starting from raw data preprocessing to explainable predictions using a Large Language Model.
 
 ---
 
 # Author
 
-**Rashid Imam**
+**Name:** Rashid Imam
 
-B.Tech – Information Technology
+**Course:** Applied AI & Machine Learning
 
-Guru Ghasidas Vishwavidyalaya, Bilaspur
+**Project:** End-to-End Data Intelligence System
 
+**Institution:** Masai School
+
+**GitHub:** https://github.com/Rashid-imam
+
+**Project Repository:** https://github.com/Rashid-imam/Applied_AI_ML_Capstone
 ---
 
-# License
-
-This repository is submitted for academic purposes as part of the Applied AI / Machine Learning Capstone assignment.
