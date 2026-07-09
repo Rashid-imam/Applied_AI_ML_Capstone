@@ -680,8 +680,8 @@ A comparison table was prepared in the README containing:
 
 | Model | Mean Squared Error | R² Score |
 |-------|--------------------|----------|
-| Linear Regression | ... | ... |
-| Ridge Regression | ... | ... |
+| Linear Regression | 2.498443 | 0.674272 |
+| Ridge Regression | 2.120632 | 0.723528 |
 
 (The actual values are generated automatically when the notebook is executed.)
 
@@ -893,11 +893,11 @@ The results were summarized in a comparison table.
 
 | Threshold | Precision | Recall | F1 Score |
 |-----------|-----------|---------|----------|
-| 0.30 | ... | ... | ... |
-| 0.40 | ... | ... | ... |
-| 0.50 | ... | ... | ... |
-| 0.60 | ... | ... | ... |
-| 0.70 | ... | ... | ... |
+| 0.30 | 0.865385 | 0.924658 | 0.894040 |
+| 0.40 | 0.867550 | 0.897260 | 0.882155 |
+| 0.50 | 0.866667 | 0.890411 | 0.878378 |
+| 0.60 | 0.877551 | 0.883562 | 0.880546 |
+| 0.70 | 0.880282 | 0.856164 | 0.868056 |
 
 (The values shown above are automatically generated when the notebook is executed.)
 
@@ -942,8 +942,8 @@ A comparison table was included in the README.
 
 | Model | Precision | Recall | ROC-AUC |
 |--------|-----------|---------|----------|
-| Logistic Regression (C=1.0) | ... | ... | ... |
-| Logistic Regression (C=0.01) | ... | ... | ... |
+| Logistic Regression (C=1.0) | 0.880282 | 0.856164 | 0.961953 |
+| Logistic Regression (C=0.01) | 0.918919 | 0.931507 | 0.975605 |
 
 ### What does C control?
 
