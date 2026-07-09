@@ -59,22 +59,25 @@ The dataset is widely used in machine learning research and therefore provides a
 
 ## Repository Structure
 
+```text
+Applied_AI_ML_Capstone/
+│
 ├── data/
 │   ├── train.csv
-│   ├── cleaned_data.csv
+│   └── cleaned_data.csv
+│
+├── models/
+│   └── best_model.pkl
 │
 ├── notebooks/
 │   ├── Part1_EDA.ipynb
 │   ├── Part2_ML.ipynb
 │   ├── Part3_AdvancedModels.ipynb
-│   ├── Part4_LLM.ipynb
-│
-├── models/
-│   └── best_model.pkl
+│   └── Part4_LLM.ipynb
 │
 ├── README.md
-│
 └── requirements.txt
+```
 
 
 # Part 1 – Data Acquisition, Cleaning and Exploratory Data Analysis
