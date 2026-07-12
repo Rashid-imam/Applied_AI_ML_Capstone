@@ -16,46 +16,22 @@ The project is divided into four independent but connected parts.
 
 Each part builds upon the previous one and demonstrates practical data science techniques used in real-world analytics projects.
 
-# Dataset
+## Dataset
 
-## Dataset Name
+**Name:** House Prices – Advanced Regression Techniques
+**Source:** Kaggle
+**Rows:** 1460 · **Columns:** 81 (38 numerical, 43 categorical)
 
-House Prices – Advanced Regression Techniques
+### Description
+The dataset contains detailed information about residential houses, including numerical and categorical attributes describing physical characteristics, construction quality, location, size, utilities, and selling price.
 
-## Source
+**Regression target:** `SalePrice`
+**Classification target:** `PriceCategory = (SalePrice > SalePrice.median()).astype(int)`
 
-Kaggle
+### Justification
+This dataset was chosen because it satisfies all assignment requirements (more than 500 rows, more than 5 numeric columns, more than 2 categorical columns, a target usable for both regression and classification) and realistically contains missing values, skewed distributions, categorical variables, and outliers — making it suitable for demonstrating the full cleaning → EDA → modeling pipeline.
 
-## Dataset Description
-
-The dataset contains detailed information about residential houses along with multiple numerical and categorical attributes describing their physical characteristics, construction quality, location, size, utilities, and selling price.
-
-The target variable used for regression is:
-
-SalePrice
-
-which represents the final selling price of each property.
-
-The dataset satisfies all assignment requirements:
-
-- More than 500 rows
-- More than 5 numerical features
-- More than 2 categorical features
-- Suitable for both regression and binary classification
-
-For the classification task, a binary target was created by comparing SalePrice with its median value.
-
-PriceCategory = (SalePrice > SalePrice.median()).astype(int)
-
-This creates two balanced classes representing lower-priced and higher-priced houses.
-
-## Dataset Justification
-
-This dataset was selected because it provides a realistic real-estate prediction problem involving both numerical and categorical variables.
-
-It contains missing values, skewed numerical distributions, categorical attributes, and outliers, making it suitable for demonstrating data cleaning, exploratory data analysis, feature engineering, regression, classification, ensemble learning, hyperparameter tuning, and LLM integration.
-
-The dataset is widely used in machine learning research and therefore provides an excellent benchmark for evaluating different predictive models.
+---
 
 ## Repository Structure
 
@@ -109,338 +85,203 @@ This file is used directly in Part 2 and Part 3.
 
 ## 1. Data Loading
 
-The dataset was loaded into a Pandas DataFrame using:
+Loaded using `pd.read_csv()`. First 5 rows, `.dtypes`, and `.shape` were printed and confirmed.
 
-```python
-pd.read_csv()
-```
+- **Shape:** `(1460, 81)`
+- **Numerical columns:** 38 · **Categorical columns:** 43
 
-After loading the dataset, the following inspections were performed:
+---
 
-- Displayed the first five rows using head()
-- Printed dataset dimensions using shape
-- Displayed column data types using dtypes
+## 2. Null Value Analysis
 
-These initial checks helped verify that the dataset was imported successfully and allowed identification of columns requiring further preprocessing.
+Computed using `df.isnull().sum()` and `(df.isnull().sum() / df.shape[0]) * 100`.
 
+**Columns exceeding 20% nulls:**
 
-## 2. Missing Value Analysis
+| Column | Missing Values | Missing % |
+|---|---|---|
+| PoolQC | 1453 | 99.52% |
+| MiscFeature | 1406 | 96.30% |
+| Alley | 1369 | 93.77% |
+| Fence | 1179 | 80.75% |
+| MasVnrType | 872 | 59.73% |
+| FireplaceQu | 690 | 47.26% |
 
-Missing values were identified using:
+These six columns were left untouched by the median-imputation step (they are handled separately, e.g. via encoding, in Part 2).
 
-```python
-df.isnull().sum()
-```
+**Example column below 20% nulls:** `LotFrontage` — 259 missing values (17.74%) — imputed with the column median.
 
-The percentage of missing values for every column was calculated as:
+For all other **numeric** columns with <20% nulls, missing values were filled using `df[col].fillna(df[col].median())`.
 
-```python
-(df.isnull().sum()/len(df))*100
-```
-
-Columns containing more than 20% missing values were identified separately for further consideration.
-
-For numerical columns containing less than 20% missing values, missing entries were imputed using the column median.
+> Note: after this step, `df.isnull().sum().sum()` still returns **7481** — these remaining nulls all belong to the categorical/high-null columns above (and a few low-null categorical columns like `Electrical`, `GarageType`, `BsmtQual`, etc.), which were intentionally left for the encoding stage in Part 2 rather than filled here.
 
 ### Why Median Instead of Mean?
+The dataset contains several highly skewed numerical variables (e.g. `MiscVal`, skew = 24.48; `LotArea`, skew = 12.21). The mean is pulled toward extreme values, while the median stays stable under skew. Since housing datasets naturally contain a small number of very expensive or unusual properties, median imputation gives a more representative central value than the mean.
 
-The dataset contains several highly skewed numerical variables.
-
-The mean is strongly influenced by extreme observations (outliers), whereas the median remains much more stable even when unusually high or low values exist.
-
-Since housing datasets typically contain expensive luxury properties that create right-skewed distributions, median imputation provides a more representative estimate of the central tendency than the mean.
-
-This approach reduces bias introduced by outliers while preserving the overall distribution of the data.
-
+---
 
 ## 3. Duplicate Detection and Removal
 
-Duplicate observations were identified using:
+- Duplicates found (`df.duplicated().sum()`): **0**
+- Rows after `df.drop_duplicates()`: **1460** (unchanged)
+- Null percentage change after removal: **No change** — since zero duplicate rows existed, the missing-value percentages before and after are identical for every column.
 
-```python
-df.duplicated().sum()
-```
-
-Detected duplicate rows were removed using:
-
-```python
-df.drop_duplicates()
-```
-
-After duplicate removal:
-
-- Total duplicate rows removed were reported.
-- Dataset shape was verified again.
-- Missing value percentages were recalculated to confirm whether duplicate removal affected null-value statistics.
-
-Removing duplicate records prevents the model from learning repeated information and helps improve generalization performance.
-
+---
 
 ## 4. Data Type Correction
 
-Several columns required data type optimization.
+- **Category conversion:** `Neighborhood` was converted to `category` dtype (a highly repetitive string column with 25 unique values repeated across the 1460 rows).
+- **Numeric correction check:** All `object`-typed columns in this dataset are genuinely categorical (e.g. `MSZoning`, `Street`, `SaleType`, `SaleCondition`) — none of them represent numeric data stored incorrectly as text, so no `pd.to_numeric()` correction was required for this dataset.
 
-The following preprocessing steps were performed:
+**Memory usage (`df.memory_usage(deep=True).sum()`):**
 
-### Numeric Conversion
+| Stage | Memory Usage |
+|---|---|
+| Before conversion | 3,600,842 bytes (≈ 3.43 MB) |
+| After conversion | 3,523,227 bytes (≈ 3.36 MB) |
+| Reduction | 77,615 bytes (≈ 2.16%) |
 
-Columns stored as object but representing numeric values were converted using:
-
-```python
-pd.to_numeric(errors="coerce")
-```
-
-This safely converted invalid values into missing values for later processing.
-
-### Category Conversion
-
-Highly repetitive string columns were converted into the category datatype.
-
-Example categorical columns include:
-
-- Neighborhood
-- MSZoning
-- SaleCondition
-
-Converting these columns significantly reduces memory usage because repeated text values are internally stored only once.
-
-Memory usage before and after optimization was measured using:
-
-```python
-df.memory_usage(deep=True).sum()
-```
-
-The optimized dataset required substantially less memory while preserving identical information.
-
-
-## 5. Descriptive Statistics
-
-Descriptive statistics were generated for all numerical variables using:
-
-```python
-df.describe()
-```
-
-The following statistics were reviewed:
-
-- Count
-- Mean
-- Standard Deviation
-- Minimum
-- 25th Percentile
-- Median
-- 75th Percentile
-- Maximum
-
-These statistics provide an overview of each variable's distribution and highlight unusually large ranges or potential outliers.
-
-
-## 6. Skewness Analysis
-
-The skewness of every numerical feature was calculated using:
-
-```python
-df[col].skew()
-```
-
-The feature with the highest absolute skewness was identified for detailed analysis.
-
-### Interpretation
-
-Positive skewness indicates that the distribution contains a long right tail. Most observations are concentrated at lower values, while a few extremely large observations pull the distribution toward the right.
-
-Negative skewness indicates that the distribution contains a long left tail. Most observations lie toward higher values while a few extremely small observations pull the distribution toward the left.
-
-Because highly skewed variables are influenced by extreme observations, the median provides a more reliable estimate of central tendency than the mean. Therefore, median imputation was preferred for skewed numerical features.
-
-The histogram produced later confirms the distribution pattern of the most skewed feature.
-
-
-## 7. Outlier Detection using Interquartile Range (IQR)
-
-Outliers were identified using the Interquartile Range (IQR) method.
-
-For each selected numerical feature:
-
-- Q1 (25th percentile)
-- Q3 (75th percentile)
-- IQR = Q3 − Q1
-- Lower Bound = Q1 − 1.5 × IQR
-- Upper Bound = Q3 + 1.5 × IQR
-
-Rows falling outside these bounds were counted as potential outliers.
-
-### Interpretation
-
-Outliers were intentionally **not removed** because house-price datasets naturally contain premium and luxury properties whose values are genuinely high rather than erroneous.
-
-Removing these observations could reduce the model's ability to learn the complete price distribution.
-
-Instead, these outliers were documented and retained for Part 2, where machine learning models such as Ridge Regression and ensemble methods are expected to handle them more robustly.
-
-
-## 8. Exploratory Data Analysis (EDA)
-
-Several visualization techniques were used to better understand the dataset.
-
-### Line Plot
-
-A line plot was generated for a numerical variable to observe changes across the dataset.
-
-The visualization helped identify overall trends, fluctuations, and unusual observations.
+The reduction is modest here because only one column (`Neighborhood`) was converted; converting the remaining 42 categorical columns to `category` dtype in Part 2's encoding step would reduce memory further.
 
 ---
 
-### Bar Chart
+## 5. Descriptive Statistics & Skewness
 
-A bar chart was created to compare the average value of a numerical feature across categories.
+`df.describe()` was run on all numeric columns (38 columns; see notebook for the full table — e.g. `SalePrice` mean = 180,921.20, std = 79,442.50, min = 34,900, max = 755,000).
 
-This visualization highlighted how different categories contribute differently to the selected numerical variable.
+**Skewness (`df[col].skew()`) — top result:**
+
+The column with the **highest absolute skewness** is **`MiscVal`**, with a skewness value of **24.48**.
+
+Top 5 most skewed columns overall:
+
+| Column | Skewness |
+|---|---|
+| MiscVal | 24.48 |
+| PoolArea | 14.83 |
+| LotArea | 12.21 |
+| 3SsnPorch | 10.30 |
+| LowQualFinSF | 9.01 |
+
+### Interpretation
+- **Positive skew** (long right tail, as seen in `MiscVal`): most houses have `MiscVal = 0`, but a small number of properties report very large miscellaneous-feature values, pulling the mean far above the median.
+- **Negative skew** (long left tail, e.g. `YearBuilt`, skew = −0.61): most houses are relatively recent builds, with a smaller number of much older houses pulling the mean down.
+- **Consequence for imputation:** filling missing values with the mean on a column like `MiscVal` would inject a distorted value (43.49) that doesn't represent the true typical value (0) — this is exactly why median imputation was used throughout Task 2.
 
 ---
 
-### Histogram
+## 6. Outlier Detection (IQR Method)
 
-A histogram of the most skewed numerical feature was plotted using 20 bins.
+Applied to two numeric columns: **`SalePrice`** and **`GrLivArea`**.
 
-The histogram confirmed the skewed distribution identified through skewness statistics.
+| Column | Q1 | Q3 | IQR | Lower Bound | Upper Bound | Outlier Rows |
+|---|---|---|---|---|---|---|
+| SalePrice | 129,975.00 | 214,000.00 | 84,025.00 | 3,937.50 | 340,037.50 | 61 |
+| GrLivArea | 1,129.50 | 1,776.75 | 647.25 | 158.63 | 2,747.63 | 31 |
 
-The long tail indicates the presence of relatively few extreme observations compared to the majority of samples.
+*(For reference, the same IQR method was also run across all 38 numeric columns; the highest outlier counts were seen in `EnclosedPorch` (208), `BsmtFinSF2` (167), and `OverallCond` (125), while columns like `YearRemodAdd`, `FullBath`, `HalfBath`, `MoSold`, and `YrSold` showed 0 outliers.)*
 
----
-
-### Scatter Plot
-
-A scatter plot was generated between two numerical variables expected to have a relationship.
-
-The plot demonstrated the direction and approximate strength of correlation.
-
-A positive trend indicates that as one variable increases, the other generally increases as well.
+### Interpretation & Handling Decision
+Outliers were **not dropped**. High values in `SalePrice` and `GrLivArea` mostly represent genuine large/premium properties rather than data errors — removing them would throw away real signal the model needs to learn the full price range. These rows are documented and retained; in Part 2, Ridge Regression and ensemble methods (which are more robust to outliers than plain Linear Regression) are used to handle their influence, rather than capping or deleting them.
 
 ---
 
-### Box Plot
+## 7. Visualizations
 
-A box plot compared a numerical feature across categorical groups.
+### 7.1 Line Plot
+Plotted **`SalePrice`** sorted by row index.
+*Description:* Prices fluctuate without any clear long-term trend across row order (row index is just the original record order, not a time axis), with visible spikes where premium properties (up to 755,000) appear among typically priced homes (median ≈ 163,000).
 
-The plot revealed:
+### 7.2 Bar Chart
+Mean of **`SalePrice`** grouped by **`Neighborhood`**.
+*Description:* `NoRidge` has the highest average sale price (≈ 335,295), while `MeadowV` has the lowest (≈ 98,576) — showing that neighborhood location has a strong influence on price.
 
-- Differences in median values
-- Differences in spread (IQR)
-- Presence of outliers
-- Variation among different categories
+### 7.3 Histogram
+Histogram (20 bins) of the most skewed column, **`MiscVal`**.
+*Description:* The distribution is extremely right-skewed — almost all houses have `MiscVal = 0`, with a long, sparse tail extending out to 15,500, confirming the skewness value of 24.48 measured in Section 5.
 
-This visualization helps understand whether categorical variables have predictive power.
+### 7.4 Scatter Plot
+**`GrLivArea`** vs **`SalePrice`**.
+*Interpretation:* The plot shows a clear positive relationship — as living area increases, sale price generally increases too, consistent with a Pearson correlation of **0.709** and Spearman correlation of **0.731** with SalePrice.
 
+### 7.5 Box Plot
+**`SalePrice`** split by **`OverallQual`**.
+*Description:* Median sale price rises steadily with each increase in overall quality rating, and the spread (IQR) also widens at higher quality levels — higher-quality homes have both higher and more variable prices, confirming `OverallQual` as a strong predictive feature (it has the highest Pearson correlation with `SalePrice` at 0.791).
 
-## 9. Pearson Correlation Analysis
+---
 
-Pearson correlation coefficients were calculated for all numerical variables using:
+## 8. Correlation Heat Map
 
-```python
-df.corr()
-```
+Computed with `df.corr(numeric_only=True)`, visualized with `sns.heatmap(annot=True)`.
 
-The resulting correlation matrix was visualized using a heatmap.
+**Highest absolute correlation pair (excluding self-pairs):** **`GarageCars`** and **`GarageArea`** (r = **0.882**).
 
-### Interpretation
+Other strong pairs found: `GrLivArea`–`TotRmsAbvGrd` (0.825), `TotalBsmtSF`–`1stFlrSF` (0.820), `OverallQual`–`SalePrice` (0.791), `YearBuilt`–`GarageYrBlt` (0.777).
 
-The heatmap highlights both strong positive and strong negative linear relationships between variables.
+### Causation Discussion
+The strong correlation between `GarageCars` and `GarageArea` does not imply one directly causes the other — a garage that holds more cars naturally needs more floor area, so this is largely a mechanical/definitional relationship rather than two independently varying features. More generally, a plausible third-variable explanation applies across several of these pairs: overall house size or quality (e.g. `OverallQual`, `GrLivArea`) likely drives multiple features simultaneously — larger, higher-quality homes tend to have bigger garages, more rooms, and larger basements all at once, so several of these correlations may reflect this shared underlying "house size/quality" factor rather than direct cause-and-effect between the two named variables.
 
-The pair with the highest absolute correlation was identified for further analysis.
+---
 
-Although a strong correlation suggests an association, it does **not** necessarily imply causation.
+## 9. Mean vs Median — Imputation Strategy Comparison
 
-A third variable may simultaneously influence both correlated variables.
+For the two highest-skewness columns identified in Section 5:
 
-For example, larger houses often have more rooms and higher sale prices.
+| Column | Skewness | Mean (before imputation) | Median (before imputation) | Chosen Statistic |
+|---|---|---|---|---|
+| MiscVal | 24.48 | 43.49 | 0.00 | Median |
+| PoolArea | 14.83 | 2.76 | 0.00 | Median |
 
-Therefore, the observed correlation may actually arise because house size influences both variables rather than one directly causing the other.
+**Justification:** Both columns are strongly positively skewed, so the mean is pulled far above the "typical" value by a small number of extreme entries (most houses simply have 0 for both features). The median (0 for both) is the far more representative central tendency and was used for imputation. After applying `fillna()`, `df[top_columns].isnull().sum()` confirmed **zero remaining nulls** in both `MiscVal` and `PoolArea`.
 
+---
 
-## 10. Mean vs Median Imputation Comparison
+## 10. Spearman Rank Correlation vs Pearson
 
-For the two numerical variables with the highest absolute skewness, both the mean and median were calculated before imputation.
+`df.corr(method='spearman')` was computed and compared against the Pearson matrix from Section 8, focused on each feature's correlation with `SalePrice`.
 
-The comparison demonstrated that the mean shifted toward extreme observations, whereas the median remained much more stable.
+**Three column pairs (each vs. SalePrice) with the largest |Spearman − Pearson| difference:**
 
-Based on the skewness direction, median imputation was selected because:
-
-- Positive skew → mean pulled upward by very high values.
-- Negative skew → mean pulled downward by very low values.
-
-After imputation, missing-value counts were verified again using:
-
-```python
-df.isnull().sum()
-```
-
-The output confirmed that no missing values remained in the selected numerical features.
-
-
-## 11. Spearman Rank Correlation
-
-Along with Pearson correlation, Spearman Rank Correlation was also computed.
-
-Unlike Pearson correlation, Spearman measures monotonic relationships using ranked values instead of raw values.
-
-The absolute difference between Pearson and Spearman coefficients was calculated for every feature pair.
-
-The three feature pairs with the largest differences were identified.
+| Feature (vs. SalePrice) | Pearson | Spearman | \|Difference\| |
+|---|---|---|---|
+| LotArea | 0.264 | 0.456 | 0.193 |
+| OpenPorchSF | 0.316 | 0.478 | 0.162 |
+| YearBuilt | 0.523 | 0.653 | 0.130 |
 
 ### Interpretation
+- **LotArea:** |Spearman| > |Pearson| → the relationship with `SalePrice` is monotonic but non-linear — larger lots consistently associate with higher prices, but not in direct proportion (a few very large lots with modest prices pull the linear/Pearson measure down).
+- **OpenPorchSF:** |Spearman| > |Pearson| → similarly monotonic-but-non-linear; having a porch consistently nudges price upward, but porch size doesn't scale price linearly.
+- **YearBuilt:** |Spearman| > |Pearson| → newer houses consistently sell for more, but the relationship isn't a straight line (likely because very old, renovated, or historic homes break the linear trend).
 
-If
+**Feature-selection guidance for Part 2:** Pearson correlation will be used for the Linear/Ridge Regression models since they assume linear relationships, while Spearman correlation is kept as a secondary signal — especially for `LotArea`, `OpenPorchSF`, and `YearBuilt`, where the true relationship is stronger than Pearson alone suggests. Tree-based models in Part 3 can exploit this non-linear monotonic signal even though Pearson underestimates it.
 
-|Spearman| > |Pearson|
+---
 
-the relationship is likely monotonic but non-linear.
+## 11. Grouped Aggregation
 
-If
+`df.groupby('Neighborhood', observed=False)['SalePrice'].agg(['mean', 'std', 'count'])`
 
-|Pearson| ≥ |Spearman|
+(25 neighborhood groups computed in total; key results below)
 
-the relationship is approximately linear.
-
-For feature selection in later machine learning models, Pearson correlation was used for identifying linear relationships, while Spearman correlation provided additional insight into monotonic relationships that Pearson may underestimate.
-
-
-## 12. Grouped Aggregation Analysis
-
-Grouped statistical analysis was performed using:
-
-```python
-df.groupby(categorical_column)[numeric_column].agg(['mean','std','count'])
-```
-
-For each category, the following statistics were calculated:
-
-- Mean
-- Standard Deviation
-- Sample Count
+| Neighborhood | Mean | Std | Count |
+|---|---|---|---|
+| NoRidge | 335,295.32 | 121,412.66 | 41 |
+| NridgHt | 316,270.62 | 96,392.54 | 77 |
+| StoneBr | 310,499.00 | 112,969.68 | 25 |
+| MeadowV | 98,576.47 | 23,491.05 | 17 |
+| IDOTRR | 100,123.78 | 33,376.71 | 37 |
 
 ### Interpretation
+- **Highest mean group:** **`NoRidge`** (mean SalePrice ≈ 335,295)
+- **Highest standard deviation group:** **`NoRidge`** (std ≈ 121,413) — the same neighborhood also has the widest internal spread.
+- **Within-group variance concern:** Since `NoRidge` has both the highest mean *and* the highest std, knowing a house is in `NoRidge` alone doesn't reliably predict its exact price — prices there range widely, so other features (size, quality, etc.) are still needed to predict individual house prices within that group.
+- **Mean ratio (highest/lowest group mean):** 335,295.32 / 98,576.47 = **3.40**. A ratio this large (over 3×) indicates `Neighborhood` carries strong predictive signal and is worth keeping as a feature in Part 2.
 
-The category with the highest mean indicates the group having the largest average value for the selected numerical feature.
+---
 
-The category with the highest standard deviation exhibits the greatest internal variability.
+## 12. Saving the Cleaned Dataset
 
-High within-group variability suggests that the categorical feature alone cannot completely explain differences in the numerical variable.
-
-The ratio between the highest group mean and the lowest group mean was also calculated.
-
-A large ratio indicates that the categorical feature carries useful predictive information for future machine learning models.
-
-
-## 13. Saving the Clean Dataset
-
-After completing all preprocessing and exploratory analysis steps, the cleaned dataset was saved using:
-
-```python
-df.to_csv("cleaned_data.csv", index=False)
-```
-
-This dataset serves as the standardized input for Part 2 (Supervised Machine Learning) and Part 3 (Advanced Modeling).
+Saved using `df.to_csv('cleaned_data.csv', index=False)`. This file is reused directly in Parts 2 and 3.
 
 
 
@@ -478,515 +319,154 @@ The cleaned dataset generated in Part 1 was used throughout this section to main
 
 ---
 
-## 1. Loading the Clean Dataset
 
-The cleaned dataset generated during Part 1 was loaded into a Pandas DataFrame using:
+## 1. Loading the Cleaned Dataset
 
-```python
-pd.read_csv("cleaned_data.csv")
-```
+`cleaned_data.csv` from Part 1 was loaded directly — shape confirmed as **(1460, 81)**, matching what Part 1 saved.
 
-Using the cleaned dataset ensures that all preprocessing tasks—including missing value handling, duplicate removal, datatype correction, and exploratory analysis—have already been completed before model training begins.
+## 2. Defining the Targets
 
-This approach keeps the machine learning workflow reproducible and prevents repeating unnecessary preprocessing steps in later stages of the project.
+- **Regression target:** `y_reg = SalePrice`
+- **Classification target:** `y_clf = (SalePrice > SalePrice.median()).astype(int)`
+- **Feature matrix:** `X = df.drop("SalePrice", axis=1)` → **(1460, 80)** columns before encoding.
 
-After loading the dataset, its dimensions and data types were verified once again to confirm that the exported file was successfully imported without any modification.
-
----
-
-## 2. Target Variable Definition
-
-Two separate prediction problems were created from the cleaned dataset.
-
-### Regression Target
-
-The continuous target selected for the regression task was:
-
-**SalePrice**
-
-The regression model attempts to predict the actual selling price of a house based on its features.
-
----
-
-### Classification Target
-
-A binary classification target was created by comparing each house's selling price with the median selling price of the dataset.
-
-```python
-PriceCategory = (SalePrice > SalePrice.median()).astype(int)
-```
-
-This transformation divides the dataset into two classes:
-
-- **0 → Lower-priced house**
-- **1 → Higher-priced house**
-
-Using the median creates nearly balanced classes, making the classification task more suitable for Logistic Regression and reducing bias toward any single class.
-
-Both target definitions were used throughout the remaining experiments in this project.
-
----
+Since the split is at the median, the classification target comes out almost perfectly balanced by construction: **732 rows labeled 0, 728 labeled 1.**
 
 ## 3. Encoding Categorical Features
 
-Machine learning algorithms require numerical input features. Since the dataset contains both numerical and categorical variables, categorical features were encoded before model training.
+Two different encoding strategies were used, depending on whether a column has a natural order:
 
-Two different encoding techniques were applied depending on the nature of the categorical variable.
+**Ordinal encoding** — `ExterQual`, `KitchenQual`, and `HeatingQC` were mapped `Po=1, Fa=2, TA=3, Gd=4, Ex=5`. These are quality grades with a genuine low-to-high order, so representing them as ordered integers lets the model use that ranking directly instead of treating "Excellent" and "Poor" as unrelated categories.
 
-### Ordinal Encoding
+**One-hot encoding** — everything else (`Neighborhood`, `MSZoning`, `SaleCondition`, `RoofMatl`, etc.) was encoded with `pd.get_dummies(drop_first=True)`. These columns have no inherent order, so one-hot avoids implying a false ranking — numbering neighborhoods 1 to 25 would wrongly suggest neighborhood #20 is "more" than neighborhood #5, which means nothing.
 
-Categorical variables having a meaningful order were encoded using integer values that preserve their natural ranking.
+Before encoding, any remaining missing values in categorical columns (columns like `PoolQC`, `Alley`, `Fence` that Part 1 intentionally left untouched) were filled with the string `"None"` — since for this dataset, missing usually genuinely means "this house doesn't have this feature," not "we don't know." This turned out to matter more than expected — see Section 5.
 
-For example:
+After encoding, the feature matrix grew to **(1460, 254)**.
+
+## 4. Leak-Free Train-Test Split and Scaling
+
+`train_test_split(X, y, test_size=0.2, random_state=42)` gave a **1168-row training set** and a **292-row test set**.
+
+`StandardScaler` was fit **only on `X_train`**, then used to transform both `X_train` and `X_test`. This matters because fitting the scaler on the full dataset before splitting would leak information about the test set's mean and spread into the "unseen" data — the model would effectively get a sneak peek at test-set statistics, making the evaluation look better than it would in the real world.
+
+## 5. Linear Regression — and an Unexpected Result
+
+| Metric | Value |
+|---|---|
+| MSE | 7,853,676,624.65 |
+| R² Score | **−0.0239** |
+
+This is worth sitting with for a moment rather than glossing over: a negative R² means the plain Linear Regression model performs *worse* than simply predicting the average sale price for every house. Looking at the coefficients explains why:
+
+| Feature | Coefficient |
+|---|---|
+| PoolArea | +276,582.04 |
+| PoolQC_None | +246,036.51 |
+| RoofMatl_CompShg | −132,333.52 |
+
+`PoolArea` and `PoolQC_None` are carrying almost the same information — a house with no pool has `PoolArea = 0` *and* `PoolQC_None = 1` at the same time. That near-perfect overlap (multicollinearity) makes the underlying matrix inversion in OLS numerically unstable, and the two coefficients blow up to huge, opposite-signed values to compensate for each other. With 254 features on only 1168 training rows, the model simply doesn't have enough independent information to pin down stable coefficients.
+
+### What a coefficient means (in principle)
+A large **positive** coefficient means increasing that (scaled) feature pushes the predicted price up, holding everything else constant. A large **negative** coefficient means the opposite. In a well-behaved model these values are informative — here, they're mostly a symptom of instability rather than genuine feature importance.
+
+## 6. Ridge Regression
+
+| Metric | Value |
+|---|---|
+| MSE | 1,385,254,032.91 |
+| R² Score | **0.8194** |
+
+### Comparison Table
+
+| Model | MSE | R² Score |
+|---|---|---|
+| Linear Regression | 7.853677e+09 | −0.0239 |
+| Ridge Regression | 1.385254e+09 | 0.8194 |
+
+This comparison is exactly why Ridge Regression exists. Ridge adds an L2 penalty that shrinks large coefficients toward zero, which directly counteracts the multicollinearity problem above — instead of `PoolArea` and `PoolQC_None` fighting each other with extreme values, Ridge keeps both modest and lets the model actually generalize. The jump from an unusable R² of −0.02 to a solid 0.82 is a clean illustration of what `alpha` (the regularization strength) buys you: a small amount of bias in exchange for a large reduction in variance. `alpha=1.0` was used here.
+
+## 7. Logistic Regression — Checking for Class Imbalance First
+
+Before jumping to imbalance-handling techniques, the actual class distribution in the training set was checked:
+
+| Class | Count | % |
+|---|---|---|
+| 0 (lower-priced) | 586 | 50.17% |
+| 1 (higher-priced) | 582 | 49.83% |
 
 ```
-Poor < Fair < Average < Good < Excellent
+Minority class %: 49.83%
+Classes already balanced -> SMOTE not required, using data as-is
 ```
 
-Maintaining this ordering allows the model to understand the relative relationship between categories.
+Since the minority class is well above the 35% threshold, this dataset doesn't actually need imbalance correction — the median split naturally produces near-50/50 classes. Rather than silently skip this requirement, the code explicitly checks the percentage and only applies SMOTE if the imbalance is real; here it correctly recognized the classes were already balanced and trained on the data as-is.
 
----
+## 8. Classification Performance (Baseline, C=1.0, threshold = 0.5)
 
-### One-Hot Encoding
+| Metric | Value |
+|---|---|
+| Accuracy | 0.8801 |
+| Precision | 0.8776 |
+| Recall | 0.8836 |
+| F1 Score | 0.8805 |
 
-Categorical variables without any natural order were converted into dummy variables using:
+**Confusion Matrix** (derived from the metrics above, on 292 test rows with 146 actual positives and 146 actual negatives):
 
-```python
-pd.get_dummies(drop_first=True)
+| | Predicted 0 | Predicted 1 |
+|---|---|---|
+| **Actual 0** | TN = 128 | FP = 18 |
+| **Actual 1** | FN = 17 | TP = 129 |
+
+## 9. ROC Curve and AUC
+
+**AUC Score: 0.9598**
+
+### Precision & Recall, spelled out
+```
+Precision = TP / (TP + FP) = 129 / (129 + 18) = 0.8776
+Recall    = TP / (TP + FN) = 129 / (129 + 17) = 0.8836
 ```
 
-Dropping the first dummy variable helps prevent multicollinearity by avoiding redundant information.
+### Which one matters more here?
+For this task, **Recall** carries a bit more weight than Precision. A False Negative means a genuinely higher-priced house gets classified as lower-priced — effectively undervaluing it. That's a costlier mistake than the reverse (flagging a lower-priced house as higher-priced), so when tuning the decision threshold later, leaning toward recall makes practical sense.
 
-One-Hot Encoding treats every category independently and prevents the model from incorrectly assuming that one category is numerically larger or smaller than another.
+### What the AUC means
+0.9598 is very close to 1.0, which means the model is very good at ranking — if you picked one higher-priced house and one lower-priced house at random from the test set, the model would correctly rank the higher-priced one above the other about 96% of the time.
 
-This makes it the preferred encoding technique for nominal categorical variables such as neighborhood names, zoning types, or sale conditions.
-
----
-
-
-## 4. Train-Test Split
-
-Before training any machine learning model, the cleaned dataset was divided into separate training and testing subsets.
-
-The split was performed using:
-
-```python
-train_test_split(
-    X,
-    y,
-    test_size=0.20,
-    random_state=42
-)
-```
-
-The dataset was divided as follows:
-
-- **80% Training Data**
-- **20% Testing Data**
-
-The training set was used to learn the model parameters, while the testing set was kept completely unseen during training and used only for final evaluation.
-
-A fixed `random_state=42` was used to ensure that the same train-test split can be reproduced whenever the notebook is executed again.
-
-Keeping an independent test set provides a realistic estimate of how well the trained model is expected to perform on unseen data.
-
----
-
-## 5. Feature Scaling
-
-Many machine learning algorithms perform better when numerical features are on a similar scale.
-
-Therefore, numerical features were standardized using **StandardScaler** from Scikit-learn.
-
-```python
-scaler = StandardScaler()
-
-scaler.fit(X_train)
-
-X_train_scaled = scaler.transform(X_train)
-
-X_test_scaled = scaler.transform(X_test)
-```
-
-### Why was the scaler fitted only on the training data?
-
-The scaler was intentionally fitted **only on the training dataset**.
-
-The same fitted scaler was then used to transform both the training and testing datasets.
-
-This prevents **data leakage**, which occurs when information from the test set accidentally influences the training process.
-
-If the scaler had been fitted on the complete dataset before splitting, the mean and standard deviation of the testing samples would already be known during training.
-
-This would make the evaluation unrealistically optimistic because the model would indirectly receive information from data that should remain completely unseen.
-
-Using training statistics only ensures that the evaluation reflects real-world model performance on new data.
-
----
-
-## 6. Linear Regression
-
-The first predictive model developed for the regression task was **Linear Regression**.
-
-The model was trained using the standardized training features.
-
-```python
-LinearRegression()
-```
-
-Predictions were generated on the test dataset and evaluated using the following performance metrics:
-
-- Mean Squared Error (MSE)
-- Coefficient of Determination (R² Score)
-
-The model coefficients were extracted together with their corresponding feature names.
-
-The three features having the largest absolute coefficient values were identified because they contribute the most toward predicting the selling price.
-
-### Interpretation of Regression Coefficients
-
-A **positive coefficient** indicates that increasing the corresponding standardized feature increases the predicted house price while all other variables remain constant.
-
-A **negative coefficient** indicates that increasing the feature decreases the predicted selling price when the remaining features are unchanged.
-
-Features with larger absolute coefficient values have a stronger influence on the model's predictions.
-
-Although Linear Regression provides an easily interpretable baseline model, it can become unstable when highly correlated features are present.
-
-For this reason, Ridge Regression was also evaluated.
-
----
-
-## 7. Ridge Regression
-
-To reduce the effect of multicollinearity and overly large coefficients, a Ridge Regression model was trained using:
-
-```python
-Ridge(alpha=1.0)
-```
-
-The same training-testing split and standardized features used for Linear Regression were reused to ensure a fair comparison.
-
-Model performance was evaluated using:
-
-- Mean Squared Error (MSE)
-- R² Score
-
-The evaluation results of Ridge Regression were compared directly with those obtained from ordinary Linear Regression.
-
-### Comparison with Linear Regression
-
-A comparison table was prepared in the README containing:
-
-| Model | Mean Squared Error | R² Score |
-|-------|--------------------|----------|
-| Linear Regression | 2.498443 | 0.674272 |
-| Ridge Regression | 2.120632 | 0.723528 |
-
-(The actual values are generated automatically when the notebook is executed.)
-
-### Why did Ridge Regression produce different results?
-
-Unlike ordinary Linear Regression, Ridge Regression introduces an **L2 regularization penalty** that discourages excessively large coefficient values.
-
-Instead of allowing coefficients to grow freely, Ridge shrinks them toward zero, making the model more stable when several predictors are highly correlated.
-
-This often improves generalization performance by reducing overfitting.
-
-The **alpha** parameter controls the strength of regularization.
-
-- A **small alpha** behaves similarly to ordinary Linear Regression.
-- A **larger alpha** applies stronger coefficient shrinkage, reducing model complexity but potentially increasing bias.
-
-Selecting an appropriate alpha value provides a balance between bias and variance, allowing the model to perform better on previously unseen data.
-
-
----
-
-## 8. Logistic Regression
-
-For the binary classification task, a **Logistic Regression** model was trained using the standardized training dataset.
-
-The model was initialized with:
-
-```python
-LogisticRegression(max_iter=1000)
-```
-
-A higher value of `max_iter` was used to ensure that the optimization algorithm converged successfully during training.
-
-The trained model was then used to generate:
-
-- Predicted class labels
-- Predicted class probabilities
-
-The predicted probabilities were later used for ROC Curve analysis, AUC calculation, threshold sensitivity analysis, and bootstrap confidence interval estimation.
-
----
-
-## 9. Handling Class Imbalance
-
-Before training the Logistic Regression model, the distribution of the target classes was examined using:
-
-```python
-y_train.value_counts()
-```
-
-The assignment requires checking whether one class contains fewer than **35%** of the training samples.
-
-If significant imbalance exists, the model may become biased toward predicting the majority class.
-
-To address this issue, one of the following approaches can be used:
-
-- SMOTE (Synthetic Minority Over-sampling Technique)
-- `class_weight="balanced"`
-
-In this project, **class_weight="balanced"** was selected.
-
-```python
-LogisticRegression(
-    class_weight="balanced",
-    max_iter=1000
-)
-```
-
-### Why was class_weight="balanced" chosen?
-
-Instead of creating synthetic observations, the algorithm automatically assigns larger penalties to mistakes made on the minority class.
-
-This allows the model to pay more attention to underrepresented samples while preserving the original training data.
-
-The class distribution before and after balancing was reported to demonstrate whether imbalance handling was required.
-
----
-
-## 10. Classification Performance Evaluation
-
-After training the Logistic Regression model, predictions were generated on the test dataset.
-
-The following evaluation metrics were calculated:
-
-- Confusion Matrix
-- Accuracy
-- Precision
-- Recall
-- F1 Score
-
-The complete classification report was generated using:
-
-```python
-classification_report()
-```
-
-The confusion matrix summarizes the prediction results into four categories:
-
-- True Positive (TP)
-- True Negative (TN)
-- False Positive (FP)
-- False Negative (FN)
-
-This provides a more detailed evaluation than accuracy alone by identifying the types of prediction errors made by the model.
-
----
-
-## 11. ROC Curve and AUC
-
-Since Logistic Regression produces prediction probabilities, the Receiver Operating Characteristic (ROC) curve was plotted.
-
-The ROC Curve was generated using:
-
-```python
-roc_curve()
-```
-
-The Area Under the Curve (AUC) was calculated using:
-
-```python
-roc_auc_score()
-```
-
-The ROC plot includes:
-
-- False Positive Rate (FPR) on the x-axis
-- True Positive Rate (TPR) on the y-axis
-- AUC value displayed on the figure
-
-### Interpretation of AUC
-
-The Area Under the ROC Curve measures how effectively the model distinguishes between the two classes.
-
-- An AUC close to **1.0** indicates excellent class separation.
-- An AUC around **0.5** indicates performance similar to random guessing.
-- Higher AUC values represent better classification performance across different decision thresholds.
-
-In this project, the obtained AUC demonstrates the model's ability to distinguish between lower-priced and higher-priced houses based on the selected features.
-
----
-
-## 12. Precision and Recall
-
-Although overall accuracy is useful, it does not always provide a complete picture of classification performance.
-
-Therefore, Precision and Recall were also evaluated.
-
-### Precision Formula
-
-```
-Precision = TP / (TP + FP)
-```
-
-Precision measures the proportion of predicted positive observations that are actually positive.
-
-A high Precision indicates that the model makes relatively few false positive predictions.
-
----
-
-### Recall Formula
-
-```
-Recall = TP / (TP + FN)
-```
-
-Recall measures the proportion of actual positive observations that are correctly identified by the model.
-
-A high Recall indicates that the model successfully detects most positive cases while producing fewer false negatives.
-
----
-
-### Which Metric is More Important?
-
-For this project, **Recall** was considered slightly more important than Precision.
-
-The objective is to correctly identify as many higher-priced houses as possible.
-
-Missing a genuinely high-value property (False Negative) may result in losing valuable information for pricing analysis.
-
-Although increasing Recall may introduce some additional False Positives, detecting most valuable properties is generally more beneficial for this prediction task.
-
----
-
-## 13. Decision Threshold Sensitivity Analysis
-
-By default, Logistic Regression predicts the positive class whenever the predicted probability is greater than **0.50**.
-
-To study the effect of different thresholds, prediction probabilities were generated using:
-
-```python
-model.predict_proba(X_test_scaled)[:,1]
-```
-
-The decision threshold was varied from:
-
-- 0.30
-- 0.40
-- 0.50
-- 0.60
-- 0.70
-
-For each threshold, the following metrics were calculated:
-
-- Precision
-- Recall
-- F1 Score
-
-The results were summarized in a comparison table.
+## 10. Decision Threshold Sensitivity
 
 | Threshold | Precision | Recall | F1 Score |
-|-----------|-----------|---------|----------|
-| 0.30 | 0.865385 | 0.924658 | 0.894040 |
-| 0.40 | 0.867550 | 0.897260 | 0.882155 |
-| 0.50 | 0.866667 | 0.890411 | 0.878378 |
-| 0.60 | 0.877551 | 0.883562 | 0.880546 |
-| 0.70 | 0.880282 | 0.856164 | 0.868056 |
+|---|---|---|---|
+| 0.30 | 0.8571 | 0.9041 | 0.8800 |
+| 0.40 | 0.8562 | 0.8973 | 0.8763 |
+| 0.50 | 0.8776 | 0.8836 | 0.8805 |
+| 0.60 | 0.8819 | 0.8699 | 0.8759 |
+| 0.70 | 0.8873 | 0.8630 | 0.8750 |
 
-(The values shown above are automatically generated when the notebook is executed.)
+The **F1-maximizing threshold is 0.50** (F1 = 0.8805) — the default threshold happens to already be close to optimal here, with 0.30 a very close second (F1 = 0.8800) and noticeably better recall (0.9041 vs 0.8836). Given that recall was flagged as the priority metric in Section 9, there's a reasonable argument for nudging the threshold down to 0.30 in practice — it trades a small amount of precision for a meaningful recall gain, catching more of the genuinely higher-priced houses.
 
-### Interpretation
+## 11. Regularization Experiment (C = 1.0 vs C = 0.01)
 
-Lowering the decision threshold increases Recall because more observations are classified as positive.
+| Model | Precision | Recall | F1 Score | AUC |
+|---|---|---|---|---|
+| Logistic Regression (C=1.0) | 0.8873 | 0.8630 | 0.8750 | 0.9598 |
+| Logistic Regression (C=0.01) | 0.9167 | 0.9041 | 0.9103 | 0.9742 |
 
-However, this also increases the number of False Positives, reducing Precision.
+`C` is the inverse of regularization strength, so a smaller value (0.01) applies much stronger regularization — it shrinks the model's coefficients more aggressively, forcing a simpler decision boundary. Every single metric improved when regularization was strengthened, which is a sign that the C=1.0 model was mildly overfitting to the training data (consistent with the coefficient instability seen back in Section 5) — the simpler C=0.01 model generalizes noticeably better on unseen data.
 
-Increasing the threshold has the opposite effect:
+## 12. Bootstrap Confidence Interval for the AUC Difference
 
-- Precision increases.
-- Recall decreases.
+To check whether the C=0.01 model's advantage is a reliable pattern or just a lucky split, 500 bootstrap samples were drawn from the test set (`np.random.seed(42)`), and the AUC difference (C=1.0 minus C=0.01) was recomputed on each resample.
 
-The threshold producing the highest F1 Score was selected as the best balance between Precision and Recall for this dataset.
+| Statistic | Value |
+|---|---|
+| Mean AUC Difference | −0.0144 |
+| 2.5th Percentile | −0.0267 |
+| 97.5th Percentile | −0.0052 |
 
-Depending on the application, the threshold may be increased to prioritize Precision or decreased to prioritize Recall.
+The 95% confidence interval, **[−0.0267, −0.0052], does not include zero.** Since the entire interval sits below zero, this isn't just noise from one particular split — the C=0.01 model reliably outperforms the C=1.0 model across resampled versions of the test set, which gives real confidence in preferring the more regularized model going forward.
 
----
-
-## 14. Regularization Experiment using Different C Values
-
-To study the effect of regularization, a second Logistic Regression model was trained using:
-
-```python
-LogisticRegression(C=0.01)
-```
-
-This model was compared with the baseline model:
-
-```python
-LogisticRegression(C=1.0)
-```
-
-The following evaluation metrics were compared:
-
-- Precision
-- Recall
-- ROC-AUC
-
-A comparison table was included in the README.
-
-| Model | Precision | Recall | ROC-AUC |
-|--------|-----------|---------|----------|
-| Logistic Regression (C=1.0) | 0.880282 | 0.856164 | 0.961953 |
-| Logistic Regression (C=0.01) | 0.918919 | 0.931507 | 0.975605 |
-
-### What does C control?
-
-The parameter **C** controls the strength of regularization.
-
-It is the inverse of regularization strength.
-
-- Larger C → weaker regularization
-- Smaller C → stronger regularization
-
-Reducing C forces the model coefficients to become smaller, producing a simpler model that is generally less prone to overfitting.
-
-The experimental results were analyzed to determine whether stronger regularization improved or reduced classification performance on this dataset.
-
----
-
-## 15. Bootstrap Confidence Interval for AUC Difference
-
-To evaluate whether the performance difference between the two Logistic Regression models was statistically reliable, a bootstrap analysis was performed.
-
-A total of **500 bootstrap samples** were generated from the test dataset using sampling with replacement.
-
-For each bootstrap sample:
-
-- ROC-AUC was calculated for the baseline model (C=1.0).
-- ROC-AUC was calculated for the strongly regularized model (C=0.01).
-- The difference between both AUC values was recorded.
-
-Finally, the following statistics were computed:
-
-- Mean AUC Difference
-- 2.5th Percentile
-- 97.5th Percentile
-
-These values form the **95% Bootstrap Confidence Interval**.
-
-### Interpretation
-
-If the confidence interval does **not** include zero, the observed performance difference is considered consistent across different samples and is therefore likely to be statistically reliable.
-
-If the confidence interval **includes zero**, the difference between the two models may simply be due to sampling variability rather than a genuine improvement.
-
-Bootstrap analysis provides additional confidence that the selected model consistently performs better instead of relying on a single train-test split.
 
 
 
