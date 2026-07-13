@@ -497,400 +497,168 @@ The best-performing model is finally saved for deployment and later reused in Pa
 
 ---
 
-# 1. Decision Tree Baseline
 
-A baseline Decision Tree Classifier was trained using the default sklearn parameters.
+## 1. Decision Tree — Baseline (No Constraints)
+
+| Dataset | Accuracy |
+|---|---|
+| Training | 1.0000 |
+| Testing | 0.8801 |
+
+A training accuracy of exactly 100% next to a noticeably lower test accuracy (88.01%) is the textbook signature of overfitting. An unconstrained Decision Tree keeps splitting until every training leaf is pure — it will happily carve out a rule for a single quirky row if that's what it takes to classify it correctly. That's what makes trees "high-variance" models: each split is a greedy, irreversible decision based only on what's in front of it at that moment, with no mechanism to revisit or generalize past overly specific rules learned early on.
+
+## 2. Controlled Decision Tree
+
+| Dataset | Accuracy |
+|---|---|
+| Training | 0.9384 |
+| Testing | 0.9075 |
+| **AUC** | **0.9530** |
+
+Adding `max_depth=5` and `min_samples_split=20` closed the gap considerably — training accuracy dropped from a suspicious 100% to a believable 93.84%, while testing accuracy actually **improved** to 90.75%. `max_depth` puts a hard ceiling on how many questions the tree can ask before making a decision, which limits how finely it can carve up the training data. `min_samples_split=20` stops the tree from splitting a node unless at least 20 samples are present there, which prevents it from creating rules based on tiny, noisy subsets of just a handful of rows. Together, these two constraints trade a small amount of bias for a large reduction in variance — exactly the fix an overfitting tree needs.
+
+## 3. Gini vs Entropy
+
+| Criterion | Testing Accuracy |
+|---|---|
+| Gini | 0.8973 |
+| Entropy | 0.9144 |
+
+Both splitting criteria measure node "impurity," just with slightly different math:
+
+```
+Gini Impurity = 1 − Σ pᵢ²
+Entropy       = − Σ pᵢ log₂(pᵢ)
+```
+
+A node with **Gini = 0** means every sample in that node belongs to the same class — a perfectly pure split. In this dataset, Entropy edged out Gini by about 1.7 percentage points on test accuracy — a modest but real difference, likely because Entropy's logarithmic penalty is slightly more sensitive to how mixed a node is, which can occasionally lead to marginally better splits.
+
+## 4. Random Forest
+
+| Metric | Value |
+|---|---|
+| Training Accuracy | 0.9966 |
+| Testing Accuracy | 0.9247 |
+| ROC-AUC | 0.9800 |
+
+**Top 5 features by importance:**
+
+| Feature | Importance |
+|---|---|
+| GrLivArea | 0.0789 |
+| YearBuilt | 0.0607 |
+| OverallQual | 0.0507 |
+| TotalBsmtSF | 0.0418 |
+| ExterQual | 0.0372 |
+
+Random Forest computes feature importance by tracking, for every feature, how much it reduces Gini impurity on average across every split where it's used, across every tree in the forest — a feature that consistently produces cleaner splits gets a higher score. This is fundamentally different from a Linear Regression coefficient: a coefficient tells you the size and direction of a feature's *linear* effect on the prediction, while feature importance here just tells you how *useful* that feature was for making decisions, with no sign or direct interpretability about which direction it pushes the outcome.
+
+**The bagging idea, in short:** each of the 100 trees in this forest is trained on a different bootstrap sample (a random sample with replacement, drawn from the training set), and at every split, only a random subset of √254 ≈ 16 features is even considered as candidates. This double randomness means individual trees end up quite different from each other — some overfit in one direction, some in another — and averaging their predictions cancels out a lot of that individual noise. That's how the forest ends up far less variance-prone than any single deep, unconstrained tree.
+
+## 5. Gradient Boosting
+
+| Metric | Value |
+|---|---|
+| Training Accuracy | 0.9940 |
+| Testing Accuracy | 0.9247 |
+| ROC-AUC | 0.9825 |
+
+Gradient Boosting edges out Random Forest on AUC (0.9825 vs 0.9800) while matching it exactly on test accuracy. Where Random Forest builds many independent trees and averages them, Gradient Boosting builds trees sequentially, with each new tree specifically trying to correct the errors of the ones before it — that sequential error-correction is what typically gives it the sharper ranking ability reflected in the higher AUC.
+
+## 6. Feature Ablation Study
+
+The 5 lowest-importance features from the Random Forest (all showing `Importance = 0.0`) were removed and a fresh Random Forest was trained on the reduced set:
+
+**Removed features:** `Heating_Wall`, `MiscFeature_Othr`, `MiscFeature_TenC`, `SaleType_Con`, `SaleType_ConLw`
+
+| Model | ROC-AUC |
+|---|---|
+| Full Random Forest | 0.9800 |
+| Reduced Random Forest | 0.9796 |
+
+The AUC barely moved — a drop of just 0.0004. These five features genuinely were dead weight; they're each rare one-hot dummy categories (unusual heating types, sale types) that almost never appear in the data, so the model essentially never learned anything useful from them. This matters for deployment: cutting 5 uninformative columns has no meaningful cost in accuracy, but it does mean a slightly smaller, cheaper, easier-to-maintain model — a genuinely good trade-off in this case. The calculus would flip if the AUC drop had been larger; simpler models are only worth it when the accuracy hit stays below whatever threshold the business can tolerate.
+
+## 7. Cross-Validated Model Comparison
+
+Using 5-fold `StratifiedKFold(shuffle=True, random_state=42)` with `scoring='roc_auc'`:
+
+| Model | Mean AUC | Std Dev |
+|---|---|---|
+| Logistic Regression | 0.9539 | 0.0132 |
+| Decision Tree (controlled) | 0.9323 | 0.0100 |
+| Random Forest | 0.9780 | 0.0063 |
+| Gradient Boosting | 0.9779 | 0.0066 |
+
+Random Forest comes out on top here, with Gradient Boosting essentially tied right behind it, and both comfortably ahead of the single Decision Tree and Logistic Regression. Cross-validation is a more trustworthy estimate of real-world performance than a single train-test split because it evaluates the model on 5 different held-out folds instead of just one — a single split's score can be flattering or unflattering purely by chance depending on which rows happened to land in the test set, while averaging across 5 folds smooths that luck out and also gives a standard deviation, which tells you how *stable* the model's performance is, not just its average.
+
+## 8. Hyperparameter Tuning with GridSearchCV
+
+A pipeline (`SimpleImputer(median)` → `StandardScaler` → `RandomForestClassifier`) was tuned over:
 
 ```python
-DecisionTreeClassifier(random_state=42)
+param_grid = {
+    'randomforestclassifier__n_estimators': [50, 100, 200],
+    'randomforestclassifier__max_depth': [5, 10, None],
+    'randomforestclassifier__min_samples_leaf': [1, 5]
+}
 ```
 
-Both training accuracy and testing accuracy were calculated.
+That's 3 × 3 × 2 = **18 hyperparameter combinations**, each evaluated across 5 folds, for **90 total model fits**.
 
-### Interpretation
-
-The unconstrained Decision Tree achieved extremely high training accuracy but noticeably lower testing accuracy.
-
-This behaviour indicates **overfitting**.
-
-The model learns many small patterns and even noise present in the training data, allowing it to perform exceptionally well on familiar data while generalizing poorly to unseen observations.
-
-Decision Trees are often described as **high-variance models** because every split is selected greedily based on the current subset of data, and earlier decisions are never revisited. Small changes in the training dataset can therefore produce very different tree structures.
-
----
-
-# 2. Controlled Decision Tree
-
-To reduce overfitting, a second Decision Tree was trained with controlled complexity.
-
-```python
-DecisionTreeClassifier(
-    max_depth=5,
-    min_samples_split=20,
-    random_state=42
-)
+**Best parameters found:**
 ```
-
-Training accuracy and testing accuracy were again evaluated.
-
-### Why These Parameters?
-
-**max_depth**
-
-Limits how deep the tree is allowed to grow.
-
-Restricting tree depth prevents the model from memorizing individual observations and usually improves generalization.
-
-**min_samples_split**
-
-Requires a minimum number of samples before creating another split.
-
-This prevents unnecessary splits on very small subsets that are often caused by random noise.
-
-### Interpretation
-
-Compared with the unconstrained tree, the controlled tree showed a smaller gap between training and testing accuracy.
-
-Although the training accuracy decreased slightly, the testing performance became more reliable, indicating improved generalization and reduced overfitting.
-
-
-
-# 3. Gini vs Entropy Comparison
-
-To compare different splitting criteria, two Decision Tree models were trained using the same hyperparameters while changing only the impurity measure.
-
-```python
-DecisionTreeClassifier(
-    criterion="gini",
-    max_depth=5,
-    random_state=42
-)
-
-DecisionTreeClassifier(
-    criterion="entropy",
-    max_depth=5,
-    random_state=42
-)
+max_depth: None
+min_samples_leaf: 1
+n_estimators: 200
 ```
+**Best cross-validated ROC-AUC: 0.9802**
 
-The test accuracy of both models was recorded and compared.
+Interestingly, the grid search preferred an *unconstrained* `max_depth` (None) over the shallower trees used elsewhere in this notebook — with 200 trees and `min_samples_leaf=1` averaging things out, the ensemble can afford individually deeper, more flexible trees without overfitting the way a single tree would.
 
-### Gini Impurity
+**Grid Search vs Randomized Search:** Grid Search is exhaustive — it guarantees finding the best combination *within the grid you defined*, but the cost grows multiplicatively with every parameter you add (90 fits here is already a lot for just 3 hyperparameters). Randomized Search instead samples a fixed number of random combinations from the space, which scales far better as the grid grows, at the cost of no longer guaranteeing it checks the single best combination — a reasonable trade when the search space gets large.
 
-The Gini Impurity used by CART Decision Trees is defined as:
+## 9. Manual Learning Curve
 
-\[
-Gini = 1 - \sum p_i^2
-\]
+The best pipeline from GridSearchCV was retrained on increasing fractions of the training data:
 
-where \(p_i\) represents the probability of each class within a node.
+| Training Fraction | Training AUC | Testing AUC |
+|---|---|---|
+| 0.2 | 1.0000 | 0.9798 |
+| 0.4 | 1.0000 | 0.9785 |
+| 0.6 | 1.0000 | 0.9751 |
+| 0.8 | 1.0000 | 0.9791 |
+| 1.0 | 1.0000 | 0.9810 |
 
-### Entropy
+**Training AUC** stays pinned at a perfect 1.0 across every fraction — with `max_depth=None`, this ensemble is flexible enough to fit any amount of training data essentially perfectly, so it never shows the "decreasing training score" pattern that data-starved high-variance models typically show at small sample sizes.
 
-Entropy measures the amount of uncertainty present in a node.
+**Testing AUC** hovers in a tight band between 0.975 and 0.981 the entire way, even at just 20% of the training data — it isn't climbing steadily as more data is added, it's just fluctuating within a narrow range.
 
-\[
-Entropy = - \sum p_i \log_2(p_i)
-\]
+**Conclusion:** this points to a model that's **capacity-limited, not data-limited** — or more precisely, it's already near its practical ceiling on this feature set well before all the training data is used. Collecting more rows probably wouldn't move the needle much further; better gains at this point would more likely come from richer features or a different model architecture than from a bigger dataset.
 
-### Interpretation
+## 10. Model Serialization
 
-A node with **Gini = 0** is considered perfectly pure because every observation belongs to a single class.
-
-Both Gini and Entropy aim to produce pure child nodes, although they calculate impurity differently.
-
-In this project, both criteria produced very similar predictive performance. The difference in accuracy was minimal, indicating that either impurity measure can effectively separate the classes for this dataset.
-
----
-
-# 4. Random Forest Classifier
-
-A Random Forest classifier was trained to improve predictive performance through ensemble learning.
-
-```python
-RandomForestClassifier(
-    n_estimators=100,
-    max_depth=10,
-    random_state=42
-)
-```
-
-The following evaluation metrics were computed:
-
-- Training Accuracy
-- Test Accuracy
-- ROC-AUC Score
-
-Compared with a single Decision Tree, Random Forest produced more stable predictions and showed better generalization on unseen data.
-
-### Feature Importance
-
-Feature importance values were obtained using:
-
-```python
-model.feature_importances_
-```
-
-The five most important features along with their importance scores were identified and ranked.
-
-### Interpretation
-
-Random Forest measures feature importance based on the **average reduction in Gini impurity** contributed by each feature across all trees in the forest.
-
-Features that consistently produce better splits receive higher importance scores because they contribute more toward reducing classification uncertainty.
-
-Unlike Linear Regression coefficients, feature importance values do not indicate whether a feature increases or decreases the prediction. Instead, they only measure how useful a feature is for making accurate splits during tree construction.
-
-### Bagging Concept
-
-Random Forest improves prediction accuracy using **Bootstrap Aggregating (Bagging).**
-
-Each tree is trained on a different bootstrap sample created by randomly selecting training observations **with replacement**.
-
-Additionally, at every split, only a random subset of approximately **√(number of features)** is considered instead of all available features.
-
-Because every tree learns from slightly different data and different subsets of features, the individual prediction errors become less correlated.
-
-The final prediction is obtained by combining predictions from all trees, which significantly reduces variance and makes Random Forest much less prone to overfitting than a single deep Decision Tree.
-
----
-
-# 5. Gradient Boosting Classifier
-
-A Gradient Boosting classifier was also trained for comparison.
-
-```python
-GradientBoostingClassifier(
-    n_estimators=100,
-    learning_rate=0.1,
-    max_depth=3,
-    random_state=42
-)
-```
-
-The following performance metrics were evaluated:
-
-- Training Accuracy
-- Test Accuracy
-- ROC-AUC Score
-
-### Interpretation
-
-Unlike Random Forest, which trains many trees independently, Gradient Boosting builds trees sequentially.
-
-Each new tree attempts to correct the prediction errors made by the previous trees.
-
-Because every successive model focuses on reducing the remaining errors, Gradient Boosting often achieves higher predictive accuracy on structured tabular datasets.
-
-However, this sequential learning process also makes the algorithm more sensitive to hyperparameter selection and increases training time compared with Random Forest.
-
-The Gradient Boosting model was later included in the cross-validation comparison to evaluate whether its improved complexity translated into better generalization performance.
-
-
-# 6. Feature Ablation Study
-
-To understand whether all input features were contributing meaningfully to the model, a feature ablation study was performed.
-
-Using the feature importance scores obtained from the Random Forest model, the five least important features were identified.
-
-A second Random Forest model was then trained after removing these five features while keeping all other hyperparameters unchanged.
-
-The ROC-AUC scores of both models were compared.
-
-- Full Model (All Features)
-- Reduced Model (Lowest 5 Features Removed)
-
-### Interpretation
-
-If the reduced model achieves nearly the same ROC-AUC as the full model, it suggests that the removed features contributed very little useful information and mainly added complexity.
-
-On the other hand, if the ROC-AUC decreases noticeably after removing those features, they still provide useful predictive information despite having relatively low importance scores.
-
-In this project, the comparison helped determine whether a simpler model could be deployed without sacrificing predictive performance.
-
-Reducing unnecessary features can lower computational cost, simplify maintenance, and improve inference speed, provided that predictive accuracy remains nearly unchanged.
-
----
-
-# 7. Cross-Validated Model Comparison
-
-Instead of relying on a single train-test split, all major classification models were evaluated using **5-fold Stratified Cross-Validation**.
-
-The following models were compared:
-
-- Logistic Regression
-- Controlled Decision Tree
-- Random Forest
-- Gradient Boosting
-
-Cross-validation was performed using:
-
-```python
-StratifiedKFold(
-    n_splits=5,
-    shuffle=True,
-    random_state=42
-)
-```
-
-Each model was evaluated using **ROC-AUC** as the scoring metric.
-
-For every model, the following statistics were reported:
-
-- Mean ROC-AUC
-- Standard Deviation of ROC-AUC
-
-### Why Cross-Validation?
-
-A single train-test split may accidentally produce optimistic or pessimistic results depending on how the data is divided.
-
-Cross-validation repeatedly trains and evaluates the model on different subsets of the data.
-
-This provides a much more reliable estimate of how the model is expected to perform on unseen data.
-
-The standard deviation of the cross-validation scores also indicates the stability of the model.
-
-A lower standard deviation suggests that the model performs consistently across different subsets of the dataset.
-
----
-
-# 8. Hyperparameter Tuning using GridSearchCV
-
-To obtain the best-performing Random Forest model, hyperparameter tuning was performed using **GridSearchCV**.
-
-A machine learning pipeline was created to ensure that preprocessing and model training occurred together without introducing data leakage.
-
-```python
-Pipeline([
-    ("imputer", SimpleImputer(strategy="median")),
-    ("scaler", StandardScaler()),
-    ("randomforestclassifier", RandomForestClassifier(random_state=42))
-])
-```
-
-The following hyperparameters were explored:
-
-- n_estimators = [50, 100, 200]
-- max_depth = [5, 10, None]
-- min_samples_leaf = [1, 5]
-
-The pipeline was evaluated using:
-
-- 5-fold Stratified Cross-Validation
-- ROC-AUC scoring
-
-After completion, the following outputs were recorded:
-
-- Best Hyperparameters
-- Best Cross-Validation ROC-AUC Score
-
-### Number of Models Evaluated
-
-The parameter grid contains:
-
-- 3 values for n_estimators
-- 3 values for max_depth
-- 2 values for min_samples_leaf
-
-Total combinations:
+The best pipeline was saved with `joblib.dump(best_pipeline, "best_model.pkl")`, then reloaded with `joblib.load()` and tested on 2 sample rows from the test set:
 
 ```
-3 × 3 × 2 = 18 models
+Predictions
+[0 0]
 ```
 
-Since each combination was evaluated using **5-fold Cross-Validation**, the total number of model fits performed was:
+The reload-and-predict cycle completed without errors, confirming the serialized pipeline (imputer + scaler + Random Forest, all bundled together) works correctly end-to-end.
 
-```
-18 × 5 = 90 model trainings
-```
+## 11. Summary Comparison Table
 
-### Grid Search vs Randomized Search
+| Model | CV Mean AUC | CV Std AUC | Test-Set AUC |
+|---|---|---|---|
+| Logistic Regression (Part 2) | 0.9539 | 0.0132 | 0.9598 |
+| Decision Tree (controlled) | 0.9323 | 0.0100 | 0.9530 |
+| Random Forest (default) | 0.9780 | 0.0063 | 0.9800 |
+| Gradient Boosting | 0.9779 | 0.0066 | 0.9825 |
+| **Random Forest (GridSearch-tuned)** | **0.9802** | — | — |
 
-Grid Search evaluates every possible hyperparameter combination, making it thorough but computationally expensive.
+### Recommendation
 
-Randomized Search evaluates only a random subset of combinations, making it much faster for large search spaces while often achieving comparable performance.
-
-For this project, Grid Search was selected because the parameter grid was relatively small and exhaustive evaluation was feasible.
-
----
-
-# 9. Manual Learning Curve Analysis
-
-To understand how training data size affects model performance, a manual learning curve was created using the best pipeline obtained from GridSearchCV.
-
-The model was trained using progressively larger portions of the training data:
-
-- 20%
-- 40%
-- 60%
-- 80%
-- 100%
-
-For each training fraction, two metrics were calculated:
-
-- Training ROC-AUC
-- Test ROC-AUC
-
-### Interpretation
-
-As expected, the training ROC-AUC gradually decreased as more training samples were included.
-
-Small datasets are easier for a model to memorize, resulting in very high training performance.
-
-As additional training data became available, memorization became more difficult, causing training performance to decrease slightly.
-
-Meanwhile, the test ROC-AUC generally improved as more data was used for training.
-
-This indicates that the model benefited from additional training examples and learned more generalized decision boundaries.
-
-If the test ROC-AUC continues increasing even at 100% of the available training data, collecting more data would likely improve future model performance.
-
-If the test ROC-AUC has already plateaued, model improvements are more likely to come from better algorithms or feature engineering rather than additional data.
-
----
-
-# 10. Model Serialization
-
-The best-performing pipeline obtained from GridSearchCV was saved for future use.
-
-```python
-joblib.dump(best_pipeline, "best_model.pkl")
-```
-
-The saved model was later reloaded using:
-
-```python
-loaded_model = joblib.load("best_model.pkl")
-```
-
-The reloaded model was then used to make predictions on manually created test samples.
-
-Successfully loading the model and generating predictions confirmed that the serialization process preserved the complete preprocessing pipeline as well as the trained machine learning model.
-
-Saving trained models eliminates the need to retrain the model every time predictions are required and makes deployment significantly easier.
-
----
-
-# 11. Final Model Comparison
-
-All classification models developed in Parts 2 and 3 were compared using the following evaluation metrics:
-
-- 5-Fold Cross-Validation Mean ROC-AUC
-- 5-Fold Cross-Validation Standard Deviation
-- Test ROC-AUC
-
-This comparison provided a fair assessment of each model's predictive performance and consistency.
-
-### Final Recommendation
-
-Among all evaluated models, the model achieving the highest cross-validated ROC-AUC while maintaining stable performance across folds was selected as the final recommendation.
-
-Although simpler models such as Logistic Regression are easier to interpret, ensemble methods demonstrated stronger predictive capability by capturing more complex relationships within the data.
-
-Considering predictive accuracy, robustness, and generalization performance, the tuned ensemble model was selected as the best solution for deployment.
-
-This serialized model (`best_model.pkl`) is reused in **Part 4** to provide LLM-powered prediction explanations.
-
+**Random Forest, using the GridSearch-tuned configuration** (`n_estimators=200, max_depth=None, min_samples_leaf=1`), is the model worth recommending to the client. It posted the highest cross-validated AUC of any model tested (0.9802), narrowly ahead of the default Random Forest and Gradient Boosting, while also showing the lowest standard deviation among the ensemble models — meaning its strong performance isn't a fluke of one lucky fold, it holds up consistently. Gradient Boosting is a very close second and would be a reasonable alternative if training time became a constraint, but given the tuned Random Forest's combination of top-tier accuracy and stability, it's the safer choice to actually ship.
 
 
 # Part 4 – LLM Powered Intelligent Feature
@@ -916,259 +684,138 @@ The workflow consists of:
 
 ---
 
-# 1. LLM API Connection
+## Track Chosen: (C) Model Prediction Explanation Pipeline
 
-The LLM was accessed through an HTTP API using the Python **requests** library.
+This part loads the best-performing model saved at the end of Part 3 and pairs it with an LLM: for a few sample houses, the model makes a prediction, and the LLM is asked to turn that prediction into a short, structured, plain-language explanation. The feature matrix used here is built with the exact same encoding as Parts 2 and 3 (ordinal quality mapping + `"None"`-filled categorical NaNs + one-hot encoding), producing the same **(1460, 254)** shape — so the model receives inputs in exactly the format it was trained on.
 
-For security reasons, the API key was **not hardcoded** inside the notebook.
+## 1. LLM API Connection
 
-Instead, it was stored as an environment variable.
+The API key is loaded from an environment variable (`os.environ.get("LLM_API_KEY")`) rather than being hardcoded anywhere in the notebook — if it's missing, the notebook raises an error immediately instead of silently failing later.
 
+A reusable `call_llm(system_prompt, user_prompt, temperature, max_tokens)` function builds the request payload, sets the `Authorization` header, posts to the OpenRouter chat completions endpoint, checks for a non-200 status code (returning `None` and printing the error if the call fails), and otherwise returns the message content.
+
+A simple test call confirmed the connection works:
+```
+Prompt: "Reply with only the word: hello"
+Response: hello
+```
+
+## 2. Loading the Model and Preparing Inputs
+
+`best_model.pkl` (the tuned Random Forest pipeline from Part 3) was loaded with `joblib.load()`. The dataset was re-encoded identically to Parts 2/3, giving a feature matrix of shape **(1460, 254)** — matching what the saved pipeline expects.
+
+Three sample records were taken from the first three rows of the dataset, and the model generated predictions and probabilities for each:
+
+| Record | Predicted Class | Probability (High Price) |
+|---|---|---|
+| 1 | 1 (High Price) | 0.995 |
+| 2 | 1 (High Price) | 0.840 |
+| 3 | 1 (High Price) | 0.995 |
+
+## 3. Prompt Design
+
+### System Prompt (verbatim)
+```
+You are an AI assistant that explains machine learning model predictions.
+
+Your task is to explain the prediction in a simple and structured way.
+
+IMPORTANT RULES:
+
+1. Return ONLY valid JSON.
+2. Do NOT write any explanation outside the JSON.
+3. Do NOT use markdown.
+4. Do NOT use code blocks.
+5. Do NOT return numeric confidence values.
+6. confidence_level must be ONLY one of these:
+   - low
+   - medium
+   - high
+7. If predicted class is 1, prediction_label must be "High Price".
+8. If predicted class is 0, prediction_label must be "Low Price".
+9. Keep the reasons short and easy to understand.
+10. next_step should contain one practical recommendation.
+
+Return exactly this JSON format:
+
+{
+  "prediction_label": "High Price or Low Price",
+  "confidence_level": "low | medium | high",
+  "top_reason": "string",
+  "second_reason": "string",
+  "next_step": "string"
+}
+```
+
+### User Prompt Template (with placeholders)
+```
+House Features:
+{feature_values}
+
+Predicted Class:
+{prediction}
+
+Prediction Probability:
+{probability}
+
+Return ONLY valid JSON.
+```
+
+### Why temperature = 0
+This is a zero-shot structured-extraction task — the goal is a consistent, schema-shaped explanation every time the same inputs are given, not creative variation. At `temperature=0`, the model always picks its highest-probability next token, which keeps the output deterministic and reliable enough to parse and validate as JSON on every call.
+
+## 4. Temperature A/B Comparison (all 3 records)
+
+| Record | Output @ temp=0 | Output @ temp=0.7 | Key Difference |
+|---|---|---|---|
+| 1 | *"Large living area and good overall quality boost value... Consider listing at a premium price..."* | *"Large living area and solid construction quality raise value... Prepare a premium listing highlighting the spacious layout..."* | Same verdict and confidence, but reworded — temp=0.7 picks different phrasing for the same underlying reasoning. |
+| 2 | *"Large living area and good overall condition... Two-car garage and solid foundation... Consider a professional appraisal..."* | *"Strong overall quality and good condition... Large living area with a finished basement... Consider listing at a premium price..."* | Both agree on the verdict, but pick different supporting features to highlight (garage/foundation vs. basement) and a different next-step suggestion. |
+| 3 | *"Large living area and good overall quality... Recent updates and solid construction... Prepare the house for listing..."* | *"Large living area and solid overall quality... Good foundation, two stories, and good roof material... Highlight the spacious interior..."* | Same conclusion, but temp=0.7 surfaces additional specific details (roof material, number of stories) not mentioned at temp=0. |
+
+In every case, `prediction_label` and `confidence_level` stayed identical between the two temperatures — only the wording and which supporting details got emphasized changed. This is expected: at `temperature=0`, the model deterministically always selects its single most likely next token, so given the same prompt it reproduces essentially the same response every time. At `temperature=0.7`, it samples from a wider probability distribution at each step, which lets less-likely-but-still-reasonable phrasings and details through — enough to vary the wording and emphasis, without changing the underlying verdict for a task this constrained by rules.
+
+## 5. Structured Output Validation
+
+A JSON schema requiring 5 scalar string fields was defined:
 ```python
-os.environ["LLM_API_KEY"]
+output_schema = {
+    "type": "object",
+    "properties": {
+        "prediction_label": {"type": "string"},
+        "confidence_level": {"type": "string"},
+        "top_reason": {"type": "string"},
+        "second_reason": {"type": "string"},
+        "next_step": {"type": "string"}
+    },
+    "required": ["prediction_label", "confidence_level", "top_reason", "second_reason", "next_step"]
+}
 ```
 
-This approach prevents accidental exposure of sensitive credentials when sharing the repository publicly.
+Every LLM response is stripped of whitespace, parsed with `json.loads()` inside a `try/except json.JSONDecodeError` block, then validated against this schema with `jsonschema.validate()` inside a `try/except jsonschema.ValidationError` block. On any failure, a fallback dict with all fields set to `None` is returned instead of letting the pipeline crash.
 
-A reusable helper function named `call_llm()` was implemented.
+## 6. PII Guardrail
 
-The function performs the following operations:
+Before any user input reaches the LLM, a regex check screens for email addresses and phone numbers:
 
-- Creates the JSON request payload
-- Adds authentication headers
-- Sends an HTTP POST request
-- Checks the response status code
-- Extracts the generated response
-- Returns only the model output
+| Test Input | Result |
+|---|---|
+| `"My email is student@gmail.com"` | **Blocked** — `Input blocked: PII detected.` |
+| `"This house has 3 bedrooms."` | **Allowed** — LLM call proceeds normally, returns a valid explanation |
 
-Before integrating the function into the complete pipeline, a simple test prompt was executed requesting the model to return only the word **"hello"**.
+The guardrail correctly distinguishes between the two, blocking only the input that actually contains identifiable personal information.
 
-The successful response confirmed that the API connection was functioning correctly.
+## 7. End-to-End Demonstration
 
----
+The complete pipeline (predict → build prompt → PII check → call LLM → parse → validate) was run on all three sample records:
 
-# 2. Prompt Engineering
+| Input (Record) | Predicted Class | Probability | Validation | Guardrail |
+|---|---|---|---|---|
+| 1 | High Price | 0.995 | PASS | Passed (no PII) |
+| 2 | High Price | 0.840 | PASS | Passed (no PII) |
+| 3 | High Price | 0.995 | PASS | Passed (no PII) |
 
-To obtain consistent and structured explanations, a carefully designed system prompt was used.
+All three records produced valid, schema-conforming JSON explanations on the first attempt, and none contained any PII, so all three were allowed through to the LLM.
 
-### System Prompt
-
-The LLM was instructed to behave as a machine learning prediction explanation assistant.
-
-Its responsibilities included:
-
-- Explaining predictions
-- Producing only valid JSON
-- Avoiding unnecessary text
-- Providing concise reasoning
-- Returning a consistent output structure
-
-The user prompt contained:
-
-- Feature values
-- Predicted class
-- Prediction probability
-
-The model was instructed to generate a JSON explanation containing fields such as:
-
-- prediction_label
-- confidence_level
-- top_reason
-- second_reason
-- next_step
-
-### Why Temperature = 0?
-
-All LLM requests used:
-
-```python
-temperature = 0
-```
-
-A temperature of zero makes the model deterministic.
-
-This means that identical inputs consistently produce nearly identical outputs.
-
-Such deterministic behavior is essential for structured JSON generation because unpredictable responses increase the likelihood of parsing or validation errors.
-
----
-
-# 3. Temperature Comparison
-
-To study the effect of randomness, every test input was evaluated twice.
-
-The first request used:
-
-```python
-temperature = 0
-```
-
-The second request used:
-
-```python
-temperature = 0.7
-```
-
-The outputs from both settings were compared.
-
-### Interpretation
-
-Responses generated with **temperature = 0** remained highly consistent and followed the requested JSON schema very closely.
-
-Responses generated with **temperature = 0.7** were more diverse and occasionally used different wording or additional explanations.
-
-While higher temperatures may improve creativity, they also increase variability.
-
-For structured prediction explanations, deterministic outputs are more reliable and therefore temperature 0 was selected for the final implementation.
-
-
-# 4. Structured Output Validation
-
-The responses generated by the LLM were expected to follow a predefined JSON structure so that they could be processed automatically by the application.
-
-To ensure consistency, a JSON schema containing the required fields was defined before making any API calls.
-
-The schema included the following required fields:
-
-- prediction_label
-- confidence_level
-- top_reason
-- second_reason
-- next_step
-
-Each field was defined as a scalar value, ensuring that every explanation returned by the LLM followed the same predictable format.
-
-After receiving the response from the API, leading and trailing whitespace was removed using:
-
-```python
-response.strip()
-```
-
-The cleaned response was then converted into a Python dictionary using:
-
-```python
-json.loads()
-```
-
-Since LLMs may occasionally generate malformed JSON, the parsing process was wrapped inside a `try-except` block.
-
-If the response could not be parsed successfully, a `JSONDecodeError` was caught and a fallback dictionary containing null values was returned instead of stopping the program.
-
-After successful parsing, the output was validated using:
-
-```python
-jsonschema.validate()
-```
-
-This ensured that all required fields were present and matched the expected data types.
-
-Any validation failures were captured using a `ValidationError`, and the same fallback dictionary was returned.
-
-Using schema validation makes the pipeline significantly more reliable because downstream code always receives data in a predictable format.
-
----
-
-# 5. Model Prediction Explanation Pipeline
-
-The best-performing machine learning model obtained in Part 3 was loaded using:
-
-```python
-joblib.load("best_model.pkl")
-```
-
-Three manually created feature vectors were prepared to evaluate the complete prediction pipeline.
-
-For each input record, the following sequence was performed:
-
-- Encode the feature values
-- Predict the output class
-- Predict the class probability
-- Construct the LLM prompt
-- Send the prompt to the API
-- Receive the structured explanation
-- Parse the JSON response
-- Validate the schema
-- Display the final explanation
-
-Each prompt supplied to the language model contained:
-
-- Input feature values
-- Predicted class
-- Prediction probability
-
-The LLM then generated a structured explanation describing why the model produced its prediction and what the prediction implies.
-
-This approach combines the predictive capability of machine learning with the interpretability provided by large language models.
-
----
-
-# 6. PII Guardrail
-
-Before every request was sent to the LLM, the user input was checked for personally identifiable information (PII).
-
-Regular expressions were used to detect common sensitive information such as:
-
-- Email addresses
-- Phone numbers
-
-If sensitive information was detected, the API request was blocked immediately.
-
-Instead of calling the language model, the application displayed:
-
-```
-Input blocked: PII detected.
-```
-
-This prevents confidential information from being transmitted to external services.
-
-Two demonstrations were included in the notebook.
-
-### Test Case 1
-
-Input containing an email address.
-
-Result:
-
-```
-Blocked
-```
-
-The API call was not executed.
-
-### Test Case 2
-
-Input containing no sensitive information.
-
-Result:
-
-```
-Allowed
-```
-
-The prediction explanation pipeline executed normally.
-
-Implementing this guardrail improves privacy protection and demonstrates responsible use of LLM APIs.
-
----
-
-# 7. End-to-End Demonstration
-
-The complete prediction explanation pipeline was executed on three different input records.
-
-For every record, the notebook displayed:
-
-- Feature values
-- Predicted class
-- Prediction probability
-- Raw LLM response
-- Parsed JSON
-- Validation result
-
-Each generated explanation successfully followed the predefined schema, allowing the responses to be processed automatically without manual correction.
-
-This demonstrated that the entire workflow—from machine learning prediction to LLM-generated explanation—operated correctly from start to finish.
-
----
 
 # Part 4 Summary
 
