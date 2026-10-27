@@ -827,7 +827,15 @@ Several practical software engineering practices were incorporated into the impl
 
 Together, these additions make the prediction pipeline more reliable, secure, and suitable for real-world deployment scenarios where both prediction accuracy and explainability are equally important.
 
+# Part 5 – Explainability, Error Analysis & Unsupervised Analysis
 
+Run on the final tuned Random Forest pipeline (last cell of `notebooks/Part3_Advanced_ML.ipynb`).
+
+![SHAP summary](images/shap_summary.png)
+
+- **SHAP:** top drivers are GrLivArea, YearBuilt, OverallQual, FullBath and GarageCars. Higher values of these features push predictions toward "High Price".
+- **Error analysis:** 22 of 292 test rows were misclassified (8 false positives, 14 false negatives). 20 of the 22 errors have a SalePrice within ±20% of the median (163,000), whereas only 132 of 292 test rows fall in that band. The model mostly errs on borderline houses near the price threshold.
+- **PCA + KMeans** on the 36 numeric features: 22 components explain 90% of the variance. Best k = 2 (silhouette 0.159, weak cluster structure), giving a budget segment (766 houses, ~$131.6K mean price) and a premium segment (694 houses, ~$235.3K mean price).
 
 # Installation
 
